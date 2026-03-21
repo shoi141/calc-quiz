@@ -1,0 +1,299 @@
+/* ── リセット ─────────────────────────── */
+* { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+body { font-family: 'Hiragino Maru Gothic ProN', 'Noto Sans JP', sans-serif; }
+
+/* ── アニメーション ───────────────────── */
+@keyframes blink  { 0%,100%{opacity:1} 50%{opacity:0} }
+@keyframes popIn  { from{transform:scale(0.7);opacity:0} to{transform:scale(1);opacity:1} }
+@keyframes floatUp{ from{opacity:0;transform:translateY(20px)} to{opacity:1;transform:translateY(0)} }
+
+/* ── 汎用クラス ───────────────────────── */
+.cursor-blink { display:inline-block; animation:blink 1s step-end infinite; }
+button { -webkit-appearance:none; touch-action:manipulation; }
+button:active { transform:translateY(2px) !important; box-shadow:0 1px 0 rgba(0,0,0,0.18) !important; }
+
+/* ── クイズ共通レイアウト ─────────────── */
+.quiz-root {
+  min-height: 100vh;
+  padding: 12px;
+  max-width: 480px;
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  box-sizing: border-box;
+}
+
+/* ── セットアップ / 結果カード ────────── */
+.setup-wrap {
+  min-height: 100vh;
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  padding: 20px 12px;
+}
+.setup-card {
+  background: #fff;
+  border-radius: 20px;
+  padding: 32px 24px;
+  text-align: center;
+  box-shadow: 0 4px 24px rgba(0,0,0,0.10);
+  margin-top: 16px;
+  width: 100%;
+  max-width: 400px;
+}
+.setup-emoji { font-size: 56px; margin-bottom: 8px; }
+.setup-title { font-size: 24px; font-weight: 900; margin: 0 0 4px; }
+.setup-sub   { color: #6b7280; font-size: 13px; margin-bottom: 20px; }
+.best-badge  {
+  border-radius: 12px; padding: 10px 16px;
+  font-size: 15px; margin-bottom: 20px; display: inline-block;
+}
+.qcount-section {
+  font-size: 13px; font-weight: bold; color: #6b7280;
+  margin-bottom: 10px; text-transform: uppercase; letter-spacing: 0.05em;
+}
+.qcount-grid { display: flex; gap: 10px; justify-content: center; margin-bottom: 24px; }
+.qcount-btn  {
+  padding: 12px 18px; border-radius: 12px;
+  font-size: 16px; font-weight: bold; cursor: pointer;
+}
+.start-btn {
+  width: 100%; padding: 14px;
+  border: none; border-radius: 14px;
+  font-size: 16px; font-weight: 900; cursor: pointer;
+}
+
+/* ── 結果画面 ─────────────────────────── */
+.result-score { font-size: 16px; color: #374151; margin: 0 0 8px; }
+.result-big   { font-size: 48px; font-weight: bold; }
+.pct-bar-bg   { height: 10px; border-radius: 99px; margin: 8px 0 4px; }
+.pct-bar-fill { height: 100%; border-radius: 99px; }
+.pct-text     { text-align: center; color: #6b7280; font-size: 14px; margin-bottom: 16px; }
+.streak-result-row { display: flex; gap: 10px; }
+.streak-result-box {
+  flex: 1; background: #f9fafb; border-radius: 12px;
+  padding: 12px; text-align: center;
+}
+.streak-result-label { font-size: 11px; color: #6b7280; font-weight: bold; margin-bottom: 4px; }
+.streak-result-val   { font-size: 20px; font-weight: 900; }
+
+/* ── ヘッダー ─────────────────────────── */
+.quiz-header  { display: flex; justify-content: space-between; align-items: center; }
+.header-left  { display: flex; align-items: center; gap: 8px; }
+.header-right { display: flex; align-items: center; gap: 6px; }
+.q-label { font-weight: 900; font-size: 20px; }
+.q-total { font-size: 13px; color: #adb5bd; font-weight: normal; }
+.type-tag {
+  font-size: 11px; font-weight: bold; color: #fff;
+  padding: 3px 10px; border-radius: 99px;
+}
+.score-label { font-size: 14px; font-weight: bold; }
+.streak-tag-sm {
+  background: #ef4444; color: #fff; font-size: 12px;
+  padding: 2px 8px; border-radius: 99px; font-weight: bold;
+}
+.best-tag-sm {
+  background: #fde68a; color: #92400e; font-size: 12px;
+  padding: 2px 8px; border-radius: 99px; font-weight: bold;
+}
+
+/* ── プログレスバー ───────────────────── */
+.progress-bg   { height: 6px; border-radius: 99px; }
+.progress-fill { height: 100%; border-radius: 99px; transition: width 0.4s; }
+
+/* ── 問題文カード ─────────────────────── */
+.problem-card {
+  background: #fff; border-radius: 16px;
+  padding: 16px 18px; box-shadow: 0 2px 12px rgba(0,0,0,0.08);
+}
+.problem-line  { margin: 4px 0; font-size: 15px; line-height: 1.8; color: #1f2937; }
+.problem-em    { font-size: 18px; font-weight: 900; }
+
+/* ── ヒント ───────────────────────────── */
+.hint-section  { display: flex; flex-direction: column; gap: 6px; }
+.hint-controls { display: flex; gap: 8px; align-items: center; }
+.hint-btn {
+  align-self: flex-start;
+  background: #fefce8; border: 1.5px solid #fde047;
+  border-radius: 20px; padding: 6px 14px;
+  font-size: 13px; color: #a16207; font-weight: bold; cursor: pointer;
+}
+.hint-close-btn {
+  background: #fff; border: 1.5px solid #e5e7eb;
+  border-radius: 20px; padding: 6px 12px;
+  font-size: 12px; color: #6b7280; font-weight: bold; cursor: pointer;
+}
+.hint-box {
+  background: #fefce8; border-radius: 12px;
+  padding: 12px 14px; border: 1.5px solid #fde047;
+}
+
+/* ── 途中式エリア ─────────────────────── */
+.scratch-area {
+  background: #fff; border-radius: 14px;
+  padding: 10px 14px; min-height: 72px;
+  cursor: text; transition: border-color 0.2s, background 0.2s;
+}
+.scratch-area-label-row {
+  display: flex; justify-content: space-between;
+  align-items: center; margin-bottom: 6px;
+}
+.scratch-area-label {
+  font-size: 11px; font-weight: bold; color: #adb5bd;
+  text-transform: uppercase; letter-spacing: 0.05em;
+}
+.scratch-area-hint { font-size: 10px; color: #d1d5db; }
+.scratch-display {
+  font-size: 15px; color: #1f2937; line-height: 1.6;
+  min-height: 24px; font-family: monospace; word-break: break-all;
+}
+.scratch-placeholder { color: #d1d5db; font-size: 14px; font-family: inherit; }
+.calc-result-badge {
+  display: inline-block; font-weight: 900; font-size: 16px;
+  padding: 0 4px; border-radius: 4px;
+}
+
+/* ── 答え欄 ───────────────────────────── */
+.answers-row { display: flex; gap: 8px; }
+.answer-slot {
+  flex: 1; background: #fff;
+  border-radius: 14px; padding: 10px 12px;
+  cursor: text; transition: all 0.2s;
+  position: relative; min-height: 72px;
+}
+.ans-label   { font-size: 11px; font-weight: bold; color: #6b7280; margin-bottom: 4px; }
+.ans-display { font-size: 22px; font-weight: 900; color: #1f2937; }
+.ans-unit    { font-size: 13px; color: #6b7280; }
+.ans-badge   { position: absolute; top: 8px; right: 10px; font-size: 16px; }
+.ans-correct-val { font-size: 12px; font-weight: bold; margin-top: 2px; }
+
+/* ── キーパッド ───────────────────────── */
+.keypad     { border-radius: 18px; padding: 10px; display: flex; flex-direction: column; gap: 6px; }
+.key-row    { display: flex; gap: 6px; }
+.key-btn {
+  flex: 1; height: 52px; border-radius: 12px; border: none;
+  font-size: 18px; font-weight: bold; cursor: pointer;
+  font-family: inherit; transition: transform 0.08s, box-shadow 0.08s;
+  box-shadow: 0 3px 0 rgba(0,0,0,0.18);
+}
+.key-btn.calc { font-size: 13px; font-weight: 900; }
+.key-btn.disabled { box-shadow: none; cursor: default; }
+
+/* ── アクションボタン ─────────────────── */
+.action-row { display: flex; gap: 8px; padding-bottom: 16px; }
+.check-btn, .next-btn, .retry-btn {
+  padding: 14px; border: none; border-radius: 14px;
+  font-size: 16px; font-weight: 900; cursor: pointer;
+}
+.check-btn { flex: 1; }
+.next-btn  { flex: 1; }
+.retry-btn {
+  padding: 14px 18px; background: #fff;
+  border: 2px solid #e5e7eb; color: #6b7280; font-size: 14px;
+}
+
+/* ── 正解エフェクト ───────────────────── */
+.celeb-overlay {
+  position: fixed; inset: 0; background: rgba(0,0,0,0.35);
+  display: flex; align-items: center; justify-content: center; z-index: 100;
+}
+.celeb-box {
+  background: #fff; border-radius: 24px;
+  padding: 40px 48px; text-align: center;
+  box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+  animation: popIn 0.35s cubic-bezier(.34,1.56,.64,1);
+}
+.celeb-emoji  { font-size: 64px; margin-bottom: 8px; }
+.celeb-text   { font-size: 32px; font-weight: 900; }
+.celeb-stars  { font-size: 20px; margin-top: 8px; }
+.celeb-streak {
+  margin-top: 12px; color: #fff;
+  padding: 6px 16px; border-radius: 99px;
+  font-weight: bold; font-size: 16px; display: inline-block;
+}
+
+/* ── 消去算専用：ビジュアルヒント ────── */
+.eq-visual {
+  background: #f0f9ff; border-radius: 12px;
+  padding: 12px 14px; border: 1.5px solid #bae6fd; margin-top: 6px;
+}
+.eq-visual-title { font-size: 12px; color: #0369a1; font-weight: bold; margin-bottom: 8px; }
+.eq-row { display: flex; align-items: center; flex-wrap: wrap; gap: 4px; padding: 3px 0; }
+.eq-sep { font-size: 13px; font-weight: bold; color: #6b7280; margin: 0 1px; }
+.eq-eq  { font-size: 14px; font-weight: bold; color: #374151; margin: 0 4px; }
+.eq-result { font-size: 16px; font-weight: 900; color: #1e293b; }
+.eq-note {
+  font-size: 11px; color: #0ea5e9; background: #e0f2fe;
+  padding: 2px 7px; border-radius: 10px; white-space: nowrap;
+}
+.pill {
+  display: inline-flex; align-items: center; gap: 4px;
+  border-radius: 16px; padding: 3px 8px;
+  font-size: 12px; font-weight: bold;
+  white-space: nowrap; flex-shrink: 0;
+  border-width: 2px; border-style: solid;
+}
+.pill-count {
+  color: #fff; border-radius: 10px;
+  padding: 1px 6px; font-size: 11px;
+}
+.eq-divider {
+  border-top: 2px dashed #7dd3fc; margin: 8px 0;
+  position: relative;
+}
+.eq-divider-label {
+  position: absolute; top: -11px; left: 50%; transform: translateX(-50%);
+  background: #0ea5e9; color: #fff; font-size: 10px;
+  padding: 2px 8px; border-radius: 10px; white-space: nowrap;
+}
+.replace-visual {
+  background: #f0f9ff; border-radius: 12px;
+  padding: 12px 14px; border: 1.5px solid #bae6fd; margin-top: 6px;
+}
+.replace-row-label { font-size: 11px; font-weight: bold; color: #0369a1; margin-bottom: 4px; }
+.replace-diff {
+  background: #fef3c7; border: 1.5px solid #fcd34d;
+  border-radius: 8px; padding: 8px 10px;
+}
+.replace-diff-main  { font-size: 12px; color: #92400e; font-weight: bold; }
+.replace-diff-note  { font-size: 11px; color: #78350f; margin-top: 3px; }
+
+/* ── 答え合わせ確認モーダル ──────────────── */
+.confirm-overlay {
+  position: fixed; inset: 0;
+  background: rgba(0,0,0,0.4);
+  display: flex; align-items: flex-end; justify-content: center;
+  z-index: 200;
+  animation: fadeIn 0.15s ease;
+}
+@keyframes fadeIn { from{opacity:0} to{opacity:1} }
+.confirm-sheet {
+  background: #fff;
+  border-radius: 24px 24px 0 0;
+  padding: 28px 24px 36px;
+  width: 100%; max-width: 480px;
+  animation: slideUp 0.2s ease;
+}
+@keyframes slideUp { from{transform:translateY(60px);opacity:0} to{transform:translateY(0);opacity:1} }
+.confirm-title {
+  font-size: 18px; font-weight: 900;
+  text-align: center; margin-bottom: 6px; color: #1e293b;
+}
+.confirm-sub {
+  font-size: 13px; color: #64748b;
+  text-align: center; margin-bottom: 20px;
+}
+.confirm-btn-row { display: flex; gap: 10px; }
+.confirm-ok-btn, .confirm-cancel-btn {
+  flex: 1; padding: 14px; border: none;
+  border-radius: 14px; font-size: 16px;
+  font-weight: 900; cursor: pointer;
+}
+.confirm-cancel-btn {
+  background: #f1f5f9; color: #64748b;
+  box-shadow: 0 3px 0 #cbd5e1;
+}
+.confirm-ok-btn {
+  box-shadow: 0 4px 0 #f59f00;
+}

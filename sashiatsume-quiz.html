@@ -1,0 +1,371 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>差集め算 練習</title>
+<link rel="stylesheet" href="common.css">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.2/babel.min.js"></script>
+<script src="common.js"></script>
+<style>
+  body { background: #f0fdf4; }
+  .cursor-blink { color: #22c55e; }
+</style>
+</head>
+<body>
+<div id="root"></div>
+<script type="text/babel">
+const { useState, useCallback, useEffect } = React;
+const STORAGE_KEY = "sashiatsume_best_streak";
+
+// ─── 問題生成 ──────────────────────────────────────────────
+function genProblem() {
+  const type = Math.floor(Math.random() * 4);
+
+  if (type === 0) {
+    const diff=randInt(1,4), people=randInt(4,15), small=randInt(2,6);
+    const large=small+diff, amari=randInt(1,6), fusoku=people*diff-amari;
+    if(fusoku<=0) return genProblem();
+    const items=[["クッキー","人"],["あめ","人"],["シール","人"],["カード","人"],["鉛筆","人"]];
+    const [item]=items[randInt(0,4)];
+    return {
+      title:"差集め算①", color:"#22c55e",
+      text:`${item}を子どもたちに配ります。\n1人に **${small}個** ずつ配ると **${amari}個** 余り、\n1人に **${large}個** ずつ配ると **${fusoku}個** 足りません。\n子どもは何人いますか？`,
+      answers:[{label:"子どもの人数",value:people}],
+      hints:[
+        `🔑 差集め算の公式：人数 ＝ (余り ＋ 不足) ÷ 1人あたりの差`,
+        `1人あたりの差 ＝ ${large} − ${small} ＝ ${diff}`,
+        `余り ＋ 不足 ＝ ${amari} ＋ ${fusoku} ＝ ${amari+fusoku}`,
+        `人数 ＝ ${amari+fusoku} ÷ ${diff} ＝ ${people}人 ✅`,
+      ],
+    };
+  }
+  if (type === 1) {
+    const diff=randInt(1,3), people=randInt(5,15), small=randInt(2,5);
+    const large=small+diff, amari_large=randInt(1,4);
+    const amari_small=amari_large+people*diff;
+    if(amari_small>30) return genProblem();
+    const items=[["ノート","人"],["消しゴム","人"],["折り紙","人"],["ビー玉","人"]];
+    const [item]=items[randInt(0,3)];
+    return {
+      title:"差集め算②（両方余る）", color:"#3b82f6",
+      text:`${item}を子どもたちに配ります。\n1人に **${small}個** ずつ配ると **${amari_small}個** 余り、\n1人に **${large}個** ずつ配ると **${amari_large}個** 余ります。\n子どもは何人いますか？`,
+      answers:[{label:"子どもの人数",value:people}],
+      hints:[
+        `🔑 両方余るとき：人数 ＝ (余りの差) ÷ (1人あたりの差)`,
+        `1人あたりの差 ＝ ${large} − ${small} ＝ ${diff}`,
+        `余りの差 ＝ ${amari_small} − ${amari_large} ＝ ${amari_small-amari_large}`,
+        `人数 ＝ ${amari_small-amari_large} ÷ ${diff} ＝ ${people}人 ✅`,
+      ],
+    };
+  }
+  if (type === 2) {
+    const diff=randInt(1,3), people=randInt(5,15), small=randInt(2,5);
+    const large=small+diff, fusoku_small=randInt(1,4);
+    const fusoku_large=fusoku_small+people*diff;
+    if(fusoku_large>40) return genProblem();
+    const items=[["キャンディー","人"],["メダル","人"],["カラーペン","人"],["豆","人"]];
+    const [item]=items[randInt(0,3)];
+    return {
+      title:"差集め算③（両方不足）", color:"#f59e0b",
+      text:`${item}を子どもたちに配ります。\n1人に **${small}個** ずつ配ると **${fusoku_small}個** 足りなく、\n1人に **${large}個** ずつ配ると **${fusoku_large}個** 足りません。\n子どもは何人いますか？`,
+      answers:[{label:"子どもの人数",value:people}],
+      hints:[
+        `🔑 両方不足のとき：人数 ＝ (不足の差) ÷ (1人あたりの差)`,
+        `1人あたりの差 ＝ ${large} − ${small} ＝ ${diff}`,
+        `不足の差 ＝ ${fusoku_large} − ${fusoku_small} ＝ ${fusoku_large-fusoku_small}`,
+        `人数 ＝ ${fusoku_large-fusoku_small} ÷ ${diff} ＝ ${people}人 ✅`,
+      ],
+    };
+  }
+  const diff=randInt(1,3), chairs=randInt(4,12), small=randInt(3,5);
+  const large=small+diff, amari=randInt(1,5), fusoku=chairs*diff-amari;
+  if(fusoku<=0) return genProblem();
+  const people=small*chairs+amari;
+  const sc=[{place:"長椅子",unit:"脚",verb:"座る",each:"人"},{place:"バス",unit:"台",verb:"乗る",each:"人"},{place:"テーブル",unit:"台",verb:"座る",each:"人"}][randInt(0,2)];
+  return {
+    title:"差集め算④（応用）", color:"#ec4899",
+    text:`${sc.place}に${sc.each}が${sc.verb}ます。\n1${sc.unit}に **${small}${sc.each}** ずつだと **${amari}${sc.each}** 余り、\n1${sc.unit}に **${large}${sc.each}** ずつだと **${fusoku}${sc.each}** 足りません。\n${sc.place}の数と人数をそれぞれ求めなさい。`,
+    answers:[{label:`${sc.place}の数`,value:chairs},{label:"人数",value:people}],
+    hints:[
+      `🔑 まず${sc.place}の数を求めよう`,
+      `1${sc.unit}あたりの差 ＝ ${large} − ${small} ＝ ${diff}`,
+      `${sc.place}の数 ＝ (${amari} ＋ ${fusoku}) ÷ ${diff} ＝ ${chairs}${sc.unit}`,
+      `人数 ＝ ${small} × ${chairs} ＋ ${amari} ＝ ${people}人 ✅`,
+    ],
+  };
+}
+
+// ─── 途中式表示 ────────────────────────────────────────────
+function ScratchDisplay({ scratch, focused }) {
+  if (!scratch) return (
+    <>
+      <span className="scratch-placeholder">ここをタッチして式を入力…</span>
+      {focused&&<span className="cursor-blink">|</span>}
+    </>
+  );
+  return (
+    <>
+      {scratch.split("\n").map((line,li,arr)=>{
+        const parts=line.split(/(＝-?\d+\.?\d*)/g);
+        return(
+          <div key={li} style={{minHeight:"22px",lineHeight:"1.7"}}>
+            {parts.map((p,pi)=>
+              /^＝-?\d+\.?\d*$/.test(p)
+                ?<span key={pi} className="calc-result-badge" style={{background:"#dcfce7",color:"#15803d",borderBottom:"2px solid #86efac"}}>{p}</span>
+                :<span key={pi}>{p}</span>
+            )}
+            {focused&&li===arr.length-1&&<span className="cursor-blink">|</span>}
+          </div>
+        );
+      })}
+    </>
+  );
+}
+
+// ─── アプリ ────────────────────────────────────────────────
+function App() {
+  const [mode,setMode]             = useState("setup");
+  const [totalQ,setTotalQ]         = useState(10);
+  const [problems,setProblems]     = useState([]);
+  const [current,setCurrent]       = useState(0);
+  const [score,setScore]           = useState(0);
+  const [scratch,setScratch]       = useState("");
+  const [calcError,setCalcError]   = useState(false);
+  const [answerVals,setAnswerVals] = useState({});
+  const [focused,setFocused]       = useState("scratch");
+  const [checked,setChecked]       = useState(false);
+  const [correct,setCorrect]       = useState({});
+  const [hintIdx,setHintIdx]       = useState(-1);
+  const [celeb,setCeleb]           = useState(false);
+  const [streak,setStreak]         = useState(0);
+  const [best,setBest]             = useState(0);
+  const [confirmOpen,setConfirmOpen] = useState(false);
+
+  useEffect(()=>{try{const s=localStorage.getItem(STORAGE_KEY);if(s)setBest(parseInt(s)||0);}catch(_){}},[]);
+  const saveBest=v=>{try{localStorage.setItem(STORAGE_KEY,String(v));}catch(_){}};
+
+  const startQuiz=()=>{
+    setProblems(Array.from({length:totalQ},()=>genProblem()));
+    setCurrent(0);setScore(0);setStreak(0);
+    setScratch("");setAnswerVals({});setFocused("scratch");
+    setChecked(false);setCorrect({});setHintIdx(-1);setCeleb(false);setMode("quiz");
+  };
+
+  const isScratch=focused==="scratch";
+  const ansIdx=isScratch?-1:parseInt(focused.split("-")[1]);
+  const problem=problems[current]||null;
+
+  const pressKey=useCallback((key)=>{
+    if(key.val==="CALC"){
+      if(!isScratch)return;
+      const r=evalExpr(getExprToParse(scratch));
+      if(r===null){setCalcError(true);setTimeout(()=>setCalcError(false),600);return;}
+      setScratch(s=>s+`＝${r}`);return;
+    }
+    if(isScratch){
+      if(key.val==="BACK")  setScratch(s=>{const m=s.match(/(＝-?\d+\.?\d*)$/);return m?s.slice(0,-m[0].length):s.slice(0,-1);});
+      else if(key.val==="CLEAR") setScratch("");
+      else if(key.val==="=")     setScratch(s=>s+"\n");
+      else setScratch(s=>s+key.val);
+    }else{
+      if(key.type==="op"||key.val==="CALC")return;
+      setAnswerVals(prev=>{
+        const cur=prev[ansIdx]||"";
+        if(key.val==="BACK")  return{...prev,[ansIdx]:cur.slice(0,-1)};
+        if(key.val==="CLEAR") return{...prev,[ansIdx]:""};
+        if(cur.length>=5)     return prev;
+        return{...prev,[ansIdx]:cur+key.val};
+      });
+    }
+  },[isScratch,ansIdx,scratch]);
+
+  const checkAll=()=>{
+    const r={};problem.answers.forEach((a,i)=>{r[i]=parseInt(answerVals[i]||"")===a.value;});
+    setCorrect(r);setChecked(true);
+    if(Object.values(r).every(Boolean)){
+      setScore(s=>s+1);const ns=streak+1;setStreak(ns);
+      if(ns>best){setBest(ns);saveBest(ns);}
+      setCeleb(true);setTimeout(()=>setCeleb(false),2000);
+    }else{setStreak(0);}
+  };
+
+  const nextQuestion=()=>{
+    if(current+1>=totalQ){setMode("result");return;}
+    setCurrent(c=>c+1);setScratch("");setAnswerVals({});setFocused("scratch");
+    setChecked(false);setCorrect({});setHintIdx(-1);setCeleb(false);
+  };
+
+  const allCorrect=checked&&Object.values(correct).every(Boolean);
+
+  if(mode==="setup") return(
+    <div className="setup-wrap" style={{background:"#f0fdf4"}}>
+      <div className="setup-card">
+        <div className="setup-emoji">🧮</div>
+        <h1 className="setup-title" style={{color:"#14532d"}}>差集め算 練習</h1>
+        <p className="setup-sub">小学校高学年レベル</p>
+        {best>0&&<div className="best-badge" style={{background:"#dcfce7",border:"1.5px solid #86efac",color:"#14532d"}}>🏆 最高連続記録：<strong>{best}問</strong></div>}
+        <div className="qcount-section">何問やる？</div>
+        <div className="qcount-grid">
+          {Q_OPTIONS.map(n=>(
+            <button key={n} className="qcount-btn"
+              style={{border:totalQ===n?"2px solid #16a34a":"2px solid #d1d5db",background:totalQ===n?"#22c55e":"#f9fafb",color:totalQ===n?"#fff":"#374151",boxShadow:totalQ===n?"0 3px 0 #15803d":"none"}}
+              onClick={()=>setTotalQ(n)}>{n}問</button>
+          ))}
+        </div>
+        <button className="start-btn" style={{background:"linear-gradient(135deg,#4ade80,#22c55e)",color:"#14532d",boxShadow:"0 4px 0 #15803d"}} onClick={startQuiz}>スタート！ 🚀</button>
+      </div>
+    </div>
+  );
+
+  if(mode==="result"){
+    const pct=Math.round((score/totalQ)*100);
+    return(
+      <div className="setup-wrap" style={{background:"#f0fdf4"}}>
+        <div className="setup-card">
+          <div className="setup-emoji">{pct===100?"🏆":pct>=70?"🎉":"💪"}</div>
+          <h2 className="setup-title" style={{color:"#14532d"}}>おわり！</h2>
+          <p className="result-score">{totalQ}問中 <span className="result-big" style={{color:"#22c55e"}}>{score}</span> 問正解</p>
+          <div className="pct-bar-bg" style={{background:"#dcfce7"}}><div className="pct-bar-fill" style={{background:"linear-gradient(90deg,#4ade80,#22c55e)",width:`${pct}%`}}/></div>
+          <p className="pct-text">{pct}%</p>
+          <div className="streak-result-row">
+            <div className="streak-result-box"><div className="streak-result-label">この回の最高連続</div><div className="streak-result-val" style={{color:"#ef4444"}}>🔥 {streak}問</div></div>
+            <div className="streak-result-box"><div className="streak-result-label">歴代最高連続</div><div className="streak-result-val" style={{color:"#f59f00"}}>🏆 {best}問</div></div>
+          </div>
+          <div style={{display:"flex",gap:"8px",marginTop:"16px"}}>
+            <button className="start-btn" style={{background:"linear-gradient(135deg,#4ade80,#22c55e)",color:"#14532d",boxShadow:"0 4px 0 #15803d"}} onClick={startQuiz}>もう一度</button>
+            <button className="start-btn" style={{background:"#6b7280",color:"#fff",boxShadow:"0 4px 0 #374151"}} onClick={()=>setMode("setup")}>設定へ</button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if(!problem) return null;
+  const progress=(current/totalQ)*100;
+
+  return(
+    <div className="quiz-root" style={{background:"#f0fdf4"}}>
+      {confirmOpen&&(
+        <div className="confirm-overlay" onClick={()=>setConfirmOpen(false)}>
+          <div className="confirm-sheet" onClick={e=>e.stopPropagation()}>
+            <div className="confirm-title">📝 答え合わせする？</div>
+            <div className="confirm-sub">まだ直したいところはない？</div>
+            <div className="confirm-btn-row">
+              <button className="confirm-cancel-btn" onClick={()=>setConfirmOpen(false)}>もどる</button>
+              <button className="confirm-ok-btn" style={{background:"linear-gradient(135deg,#4ade80,#22c55e)",color:"#14532d"}} onClick={()=>{setConfirmOpen(false);checkAll();}}>答え合わせ ✔</button>
+            </div>
+          </div>
+        </div>
+      )}
+      {celeb&&(
+        <div className="celeb-overlay">
+          <div className="celeb-box">
+            <div className="celeb-emoji">🎉</div>
+            <div className="celeb-text" style={{color:"#15803d"}}>せいかい！</div>
+            <div className="celeb-stars">{randomStars(5)}</div>
+            {streak>=3&&<div className="celeb-streak" style={{background:"#ef4444"}}>🔥 {streak}れんぞく！</div>}
+            {streak===best&&streak>1&&<div className="celeb-streak" style={{background:"#f59f00",marginTop:"6px"}}>🏆 新記録！</div>}
+          </div>
+        </div>
+      )}
+      <div className="quiz-header">
+        <div className="header-left">
+          <span className="q-label" style={{color:"#14532d"}}>Q{current+1}<span className="q-total">/{totalQ}</span></span>
+          <span className="type-tag" style={{background:problem.color}}>{problem.title}</span>
+        </div>
+        <div className="header-right">
+          <span className="score-label">⭐ {score}</span>
+          {streak>=2&&<span className="streak-tag-sm">🔥{streak}</span>}
+          {best>0&&<span className="best-tag-sm">🏆{best}</span>}
+        </div>
+      </div>
+      <div className="progress-bg" style={{background:"#d1fae5"}}>
+        <div className="progress-fill" style={{background:problem.color,width:`${progress}%`}}/>
+      </div>
+      <div className="problem-card" style={{borderTop:`5px solid ${problem.color}`}}>
+        {problem.text.split("\n").map((line,i)=>(
+          <p key={i} className="problem-line">
+            {line.split(/(\*\*[^*]+\*\*)/).map((seg,j)=>
+              seg.startsWith("**")?<strong key={j} className="problem-em" style={{color:problem.color}}>{seg.replace(/\*\*/g,"")}</strong>:seg
+            )}
+          </p>
+        ))}
+      </div>
+      <div className="hint-section">
+        <div className="hint-controls">
+          <button className="hint-btn" onClick={()=>setHintIdx(h=>Math.min(h+1,problem.hints.length-1))} disabled={hintIdx>=problem.hints.length-1}>
+            💡 ヒント{hintIdx<0?"を見る":`(${hintIdx+1}/${problem.hints.length})`}
+          </button>
+          {hintIdx>=0&&<button className="hint-close-btn" onClick={()=>setHintIdx(-1)}>✕ 閉じる</button>}
+        </div>
+        {hintIdx>=0&&(
+          <div className="hint-box">
+            {problem.hints.slice(0,hintIdx+1).map((h,i)=>(
+              <div key={i} style={{fontSize:"13px",color:"#374151",lineHeight:"1.8",fontFamily:"monospace",opacity:i<hintIdx?0.55:1}}>{h}</div>
+            ))}
+          </div>
+        )}
+      </div>
+      <div className="scratch-area"
+        style={{border:`2px solid ${calcError?"#ef4444":isScratch?"#22c55e":"#e5e7eb"}`,boxShadow:isScratch&&!calcError?"0 0 0 3px rgba(34,197,94,0.15)":calcError?"0 0 0 3px rgba(239,68,68,0.15)":"none",background:calcError?"#fef2f2":"#fff"}}
+        onClick={()=>setFocused("scratch")}
+      >
+        <div className="scratch-area-label-row">
+          <span className="scratch-area-label">📝 途中式</span>
+          <span className="scratch-area-hint">＝計算 で自動計算</span>
+        </div>
+        <div className="scratch-display"><ScratchDisplay scratch={scratch} focused={isScratch}/></div>
+      </div>
+      <div className="answers-row">
+        {problem.answers.map((a,i)=>{
+          const isFoc=focused===`ans-${i}`;const isOk=checked?correct[i]:null;
+          return(
+            <div key={i} className="answer-slot"
+              style={{background:isOk===true?"#dcfce7":isOk===false?"#fef2f2":"#fff",border:`2px solid ${isFoc?"#22c55e":isOk===true?"#4ade80":isOk===false?"#ef4444":"#e5e7eb"}`,boxShadow:isFoc?"0 0 0 3px rgba(34,197,94,0.15)":"none"}}
+              onClick={()=>setFocused(`ans-${i}`)}
+            >
+              <div className="ans-label">{a.label}</div>
+              <div className="ans-display">{answerVals[i]||<span className="scratch-placeholder">?</span>}{isFoc&&<span className="cursor-blink">|</span>}</div>
+              {isOk===true&&<div className="ans-badge">✅</div>}
+              {isOk===false&&<div className="ans-badge">❌</div>}
+              {checked&&isOk===false&&<div className="ans-correct-val" style={{color:"#15803d"}}>→ {a.value}</div>}
+            </div>
+          );
+        })}
+      </div>
+      <div className="keypad" style={{background:"#dcfce7"}}>
+        {KEYPAD.map((row,ri)=>(
+          <div key={ri} className="key-row">
+            {row.map(key=>{
+              const dis=!isScratch&&(key.type==="op"||key.val==="CALC");
+              let bg="#fff",color="#1f2937";
+              if(key.type==="op")  {bg="#86efac";color="#14532d";}
+              if(key.type==="ctrl"){bg="#fca5a5";color="#fff";}
+              if(key.val==="CALC") {bg="linear-gradient(135deg,#4ade80,#22c55e)";color="#14532d";}
+              if(dis)              {bg="#e5e7eb";color="#9ca3af";}
+              return(<button key={key.val} className={`key-btn${key.val==="CALC"?" calc":""}${dis?" disabled":""}`} style={{background:bg,color,boxShadow:dis?"none":"0 3px 0 rgba(0,0,0,0.15)"}} onClick={()=>!dis&&pressKey(key)} disabled={dis}>{key.label}</button>);
+            })}
+          </div>
+        ))}
+      </div>
+      <div className="action-row">
+        {!checked?(
+          <button className="check-btn" style={{background:"linear-gradient(135deg,#4ade80,#22c55e)",color:"#14532d",boxShadow:"0 4px 0 #15803d"}} onClick={()=>setConfirmOpen(true)}>こたえをチェック ✔</button>
+        ):(
+          <>
+            <button className="next-btn" style={{background:"linear-gradient(135deg,#60a5fa,#3b82f6)",color:"#fff",boxShadow:"0 4px 0 #1d4ed8"}} onClick={nextQuestion}>{current+1>=totalQ?"結果を見る 🎉":"つぎへ →"}</button>
+            {!allCorrect&&<button className="retry-btn" onClick={()=>{setChecked(false);setCorrect({});}}>やりなおす</button>}
+          </>
+        )}
+      </div>
+    </div>
+  );
+}
+
+ReactDOM.createRoot(document.getElementById("root")).render(<App/>);
+</script>
+</body>
+</html>

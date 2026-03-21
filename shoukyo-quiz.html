@@ -1,0 +1,628 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>消去算 練習</title>
+<link rel="stylesheet" href="common.css">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.2/babel.min.js"></script>
+<script src="common.js"></script>
+<style>
+  body { background: #eff6ff; }
+  .cursor-blink { color: #3b82f6; }
+</style>
+</head>
+<body>
+<div id="root"></div>
+<script type="text/babel">
+const { useState, useCallback, useEffect } = React;
+
+// ─── 色の定義 ──────────────────────────────────────────────
+const COL = [
+  { c1:"#dc2626", c2:"#fee2e2" },  // 赤
+  { c1:"#2563eb", c2:"#dbeafe" },  // 青
+];
+
+// ─── 図解ヒント コンポーネント ─────────────────────────────
+
+// カラーピル（アイテム名 ×個数）
+function Pill({ label, count, c1, c2 }) {
+  return (
+    <span style={{
+      display:"inline-flex", alignItems:"center", gap:"4px",
+      background:c2, border:`2px solid ${c1}`,
+      borderRadius:"16px", padding:"3px 8px",
+      fontSize:"12px", fontWeight:"bold", color:c1,
+      whiteSpace:"nowrap", flexShrink:0,
+    }}>
+      {label}
+      <span style={{background:c1,color:"#fff",borderRadius:"10px",padding:"1px 6px",fontSize:"11px"}}>×{count}</span>
+    </span>
+  );
+}
+
+// 1行の式（ピル群 ＝ 合計）
+function EqRow({ cells, result, unit }) {
+  return (
+    <div style={{display:"flex",alignItems:"center",flexWrap:"wrap",gap:"4px",padding:"3px 0"}}>
+      {cells.map((cell,i) => (
+        <React.Fragment key={i}>
+          {i>0 && <span style={{fontSize:"13px",fontWeight:"bold",color:"#6b7280",margin:"0 1px"}}>＋</span>}
+          <Pill {...cell} />
+        </React.Fragment>
+      ))}
+      <span style={{fontSize:"14px",fontWeight:"bold",color:"#374151",margin:"0 4px"}}>＝</span>
+      <span style={{fontSize:"16px",fontWeight:"900",color:"#1e293b"}}>{result.toLocaleString()}{unit}</span>
+    </div>
+  );
+}
+
+// 消去算メイン図（2行 → ひき算 → 結果）
+function EqVisual({ hint }) {
+  return (
+    <div style={{background:"#f0f9ff",borderRadius:"12px",padding:"12px 14px",border:"1.5px solid #bae6fd",marginTop:"6px"}}>
+      {hint.title && (
+        <div style={{fontSize:"12px",color:"#0369a1",fontWeight:"bold",marginBottom:"8px"}}>
+          📊 {hint.title}
+        </div>
+      )}
+      {hint.rows.map((row,i) => (
+        <div key={i} style={{display:"flex",alignItems:"center",gap:"8px",flexWrap:"wrap"}}>
+          <EqRow cells={row.cells} result={row.result} unit={row.unit} />
+          {row.note && (
+            <span style={{fontSize:"11px",color:"#0ea5e9",background:"#e0f2fe",padding:"2px 7px",borderRadius:"10px",whiteSpace:"nowrap"}}>
+              {row.note}
+            </span>
+          )}
+        </div>
+      ))}
+      {hint.sub && (
+        <>
+          <div style={{borderTop:"2px dashed #7dd3fc",margin:"8px 0",position:"relative"}}>
+            <span style={{
+              position:"absolute", top:"-11px", left:"50%", transform:"translateX(-50%)",
+              background:"#0ea5e9", color:"#fff", fontSize:"10px",
+              padding:"2px 8px", borderRadius:"10px", whiteSpace:"nowrap",
+            }}>
+              ⬆️ ひき算すると {hint.sub.note} が消える！
+            </span>
+          </div>
+          <EqRow cells={hint.sub.cells} result={hint.sub.result} unit={hint.sub.unit} />
+        </>
+      )}
+    </div>
+  );
+}
+
+// 置き換え図（タイプ④用）
+function ReplaceVisual({ hint }) {
+  return (
+    <div style={{background:"#f0f9ff",borderRadius:"12px",padding:"12px 14px",border:"1.5px solid #bae6fd",marginTop:"6px"}}>
+      {hint.rows.map((row,i) => (
+        <div key={i} style={{marginBottom:"10px"}}>
+          <div style={{fontSize:"11px",fontWeight:"bold",color:"#0369a1",marginBottom:"4px"}}>
+            {row.label}
+          </div>
+          <EqRow cells={row.cells} result={row.result} unit={row.unit} />
+        </div>
+      ))}
+      {hint.diff && (
+        <div style={{background:"#fef3c7",border:"1.5px solid #fcd34d",borderRadius:"8px",padding:"8px 10px"}}>
+          <div style={{fontSize:"12px",color:"#92400e",fontWeight:"bold"}}>
+            ⚡ 差： {hint.diff.calc} ＝ <span style={{fontSize:"15px"}}>{hint.diff.result}{hint.diff.unit}</span>
+          </div>
+          {hint.diff.note && (
+            <div style={{fontSize:"11px",color:"#78350f",marginTop:"3px"}}>{hint.diff.note}</div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ヒント1アイテムのレンダラー
+function HintItem({ hint, faded }) {
+  const wrap = { opacity: faded ? 0.45 : 1, marginBottom: "6px", transition:"opacity 0.3s" };
+  if (typeof hint === "string") {
+    return (
+      <div style={{...wrap, fontSize:"13px", color:"#374151", lineHeight:"1.9", whiteSpace:"pre-wrap"}}>
+        {hint}
+      </div>
+    );
+  }
+  if (hint.kind === "eq") return <div style={wrap}><EqVisual hint={hint} /></div>;
+  if (hint.kind === "replace") return <div style={wrap}><ReplaceVisual hint={hint} /></div>;
+  return null;
+}
+
+// ─── 問題生成 ──────────────────────────────────────────────
+function genProblem() {
+  const type = Math.floor(Math.random() * 4);
+
+  if (type === 0) {
+    // 基本型：値段
+    const a = randInt(3,12)*10, b = randInt(2,8)*10;
+    const na1=randInt(2,5), nb1=randInt(2,6);
+    const na2=randInt(2,5), nb2=randInt(2,6);
+    if (na1===na2 && nb1===nb2) return genProblem();
+    const lcmA=lcm(na1,na2), m1=lcmA/na1, m2=lcmA/na2;
+    const sum1=na1*a+nb1*b, sum2=na2*a+nb2*b;
+    const nS1=sum1*m1, nS2=sum2*m2;
+    const nNb1=nb1*m1, nNb2=nb2*m2;
+    const diffNb=nNb1-nNb2, diffS=nS1-nS2;
+    if (diffNb<=0||diffS<=0) return genProblem();
+    const foods=[["りんご","みかん"],["ケーキ","プリン"],["パン","クッキー"],["チョコ","グミ"]];
+    const [f1,f2]=foods[randInt(0,3)];
+    return {
+      title:"消去算①", color:"#3b82f6",
+      text:`${f1}${na1}個と${f2}${nb1}個で **${sum1}円**\n${f1}${na2}個と${f2}${nb2}個で **${sum2}円**\n${f1}1個と${f2}1個の値段をそれぞれ求めなさい。`,
+      answers:[{label:`${f1}1個`,value:a,unit:"円"},{label:`${f2}1個`,value:b,unit:"円"}],
+      hints:[
+        `💡 2つの式を使って\n「${f1}の数を同じにする」のがポイント！\nそうするとひき算で${f1}だけ消せるよ`,
+        { kind:"eq", title:"問題を図で表すと…",
+          rows:[
+            { cells:[{label:f1,count:na1,...COL[0]},{label:f2,count:nb1,...COL[1]}], result:sum1, unit:"円", note:m1>1?`この式を${m1}回分にする`:undefined },
+            { cells:[{label:f1,count:na2,...COL[0]},{label:f2,count:nb2,...COL[1]}], result:sum2, unit:"円", note:m2>1?`この式を${m2}回分にする`:undefined },
+          ]
+        },
+        { kind:"eq", title:`${f1}を${lcmA}個にそろえてひき算すると…`,
+          rows:[
+            { cells:[{label:f1,count:lcmA,...COL[0]},{label:f2,count:nNb1,...COL[1]}], result:nS1, unit:"円" },
+            { cells:[{label:f1,count:lcmA,...COL[0]},{label:f2,count:nNb2,...COL[1]}], result:nS2, unit:"円" },
+          ],
+          sub:{ note:f1, cells:[{label:f2,count:diffNb,...COL[1]}], result:diffS, unit:"円" }
+        },
+        `${f2}が${diffNb}個で${diffS}円とわかった！\n${f2}1個 ＝ ${diffS} ÷ ${diffNb} ＝ ${b}円`,
+        `${f2}が${b}円とわかったので上の式にあてはめると…\n${f1}が${na1}個の分 ＝ ${sum1} － ${b}×${nb1} ＝ ${sum1-b*nb1}円\n${f1}1個 ＝ ${sum1-b*nb1} ÷ ${na1} ＝ ${a}円 ✅`,
+      ],
+    };
+  }
+
+  if (type === 1) {
+    // 倍数型
+    const a=randInt(10,40), b=randInt(5,30);
+    const k1=randInt(2,4), k2=randInt(1,3);
+    if (k1===k2) return genProblem();
+    const m1=randInt(1,3), m2=randInt(1,3);
+    if (k1===k2&&m1===m2) return genProblem();
+    const sum1=k1*a+m1*b, sum2=k2*a+m2*b;
+    const lcmK=lcm(k1,k2), t1=lcmK/k1, t2=lcmK/k2;
+    const nM1=m1*t1, nM2=m2*t2;
+    const nS1=sum1*t1, nS2=sum2*t2;
+    const diffM=nM1-nM2, diffS=nS1-nS2;
+    if (diffM===0) return genProblem();
+    const names=[["A","B"],["兄","弟"],["姉","妹"],["赤","青"]];
+    const [n1,n2]=names[randInt(0,3)];
+    return {
+      title:"消去算②", color:"#8b5cf6",
+      text:`${n1}の${k1}倍と${n2}の${m1}倍の合計は **${sum1}**\n${n1}の${k2}倍と${n2}の${m2}倍の合計は **${sum2}**\n${n1}と${n2}をそれぞれ求めなさい。`,
+      answers:[{label:n1,value:a,unit:""},{label:n2,value:b,unit:""}],
+      hints:[
+        `💡 2つの式を使って\n「${n1}の倍数を同じにする」のがポイント！\nそうするとひき算で${n1}だけ消せるよ`,
+        { kind:"eq", title:"問題を図で表すと…",
+          rows:[
+            { cells:[{label:`${n1}の倍`,count:k1,...COL[0]},{label:`${n2}の倍`,count:m1,...COL[1]}], result:sum1, unit:"", note:t1>1?`この式を${t1}回分にする`:undefined },
+            { cells:[{label:`${n1}の倍`,count:k2,...COL[0]},{label:`${n2}の倍`,count:m2,...COL[1]}], result:sum2, unit:"", note:t2>1?`この式を${t2}回分にする`:undefined },
+          ]
+        },
+        { kind:"eq", title:`${n1}の倍数を${lcmK}倍にそろえてひき算すると…`,
+          rows:[
+            { cells:[{label:`${n1}の倍`,count:lcmK,...COL[0]},{label:`${n2}の倍`,count:nM1,...COL[1]}], result:nS1, unit:"" },
+            { cells:[{label:`${n1}の倍`,count:lcmK,...COL[0]},{label:`${n2}の倍`,count:nM2,...COL[1]}], result:nS2, unit:"" },
+          ],
+          sub:{ note:n1, cells:[{label:`${n2}の倍`,count:diffM,...COL[1]}], result:diffS, unit:"" }
+        },
+        `${n2}の${diffM}倍が${diffS}とわかった！\n${n2} ＝ ${diffS} ÷ ${diffM} ＝ ${b}`,
+        `${n2}が${b}とわかったので上の式にあてはめると…\n${n1}の${k1}倍 ＝ ${sum1} － ${m1}×${b} ＝ ${sum1-m1*b}\n${n1} ＝ ${sum1-m1*b} ÷ ${k1} ＝ ${a} ✅`,
+      ],
+    };
+  }
+
+  if (type === 2) {
+    // 重さ型
+    const a=randInt(3,15)*10, b=randInt(2,10)*10;
+    const na1=randInt(2,5), nb1=randInt(1,4);
+    const na2=randInt(1,4), nb2=randInt(2,5);
+    if (na1===na2&&nb1===nb2) return genProblem();
+    const lcmA=lcm(na1,na2), m1=lcmA/na1, m2=lcmA/na2;
+    const w1=na1*a+nb1*b, w2=na2*a+nb2*b;
+    const nW1=w1*m1, nW2=w2*m2;
+    const nNb1=nb1*m1, nNb2=nb2*m2;
+    const diffNb=nNb1-nNb2, diffW=nW1-nW2;
+    if (diffNb<=0||diffW<=0) return genProblem();
+    const things=[["本","ノート"],["缶","ビン"],["積み木","ブロック"],["りんご","みかん"]];
+    const [i1,i2]=things[randInt(0,3)];
+    return {
+      title:"消去算③（重さ）", color:"#ec4899",
+      text:`${i1}${na1}個と${i2}${nb1}個の重さは **${w1}g**\n${i1}${na2}個と${i2}${nb2}個の重さは **${w2}g**\n${i1}1個と${i2}1個の重さをそれぞれ求めなさい。`,
+      answers:[{label:`${i1}1個`,value:a,unit:"g"},{label:`${i2}1個`,value:b,unit:"g"}],
+      hints:[
+        `💡 2つの式を使って\n「${i1}の数を同じにする」のがポイント！\nそうするとひき算で${i1}だけ消せるよ`,
+        { kind:"eq", title:"問題を図で表すと…",
+          rows:[
+            { cells:[{label:i1,count:na1,...COL[0]},{label:i2,count:nb1,...COL[1]}], result:w1, unit:"g", note:m1>1?`この式を${m1}回分にする`:undefined },
+            { cells:[{label:i1,count:na2,...COL[0]},{label:i2,count:nb2,...COL[1]}], result:w2, unit:"g", note:m2>1?`この式を${m2}回分にする`:undefined },
+          ]
+        },
+        { kind:"eq", title:`${i1}を${lcmA}個にそろえてひき算すると…`,
+          rows:[
+            { cells:[{label:i1,count:lcmA,...COL[0]},{label:i2,count:nNb1,...COL[1]}], result:nW1, unit:"g" },
+            { cells:[{label:i1,count:lcmA,...COL[0]},{label:i2,count:nNb2,...COL[1]}], result:nW2, unit:"g" },
+          ],
+          sub:{ note:i1, cells:[{label:i2,count:diffNb,...COL[1]}], result:diffW, unit:"g" }
+        },
+        `${i2}が${diffNb}個で${diffW}gとわかった！\n${i2}1個 ＝ ${diffW} ÷ ${diffNb} ＝ ${b}g`,
+        `${i2}が${b}gとわかったので上の式にあてはめると…\n${i1}が${na1}個の分 ＝ ${w1} － ${b}×${nb1} ＝ ${w1-b*nb1}g\n${i1}1個 ＝ ${w1-b*nb1} ÷ ${na1} ＝ ${a}g ✅`,
+      ],
+    };
+  }
+
+  // 応用型：置き換え
+  const a=randInt(5,15)*10, b=randInt(3,10)*10;
+  const qa=randInt(3,8), qb=randInt(3,8);
+  const total=qa*a+qb*b, totalCount=qa+qb;
+  const shops=[["消しゴム","定規"],["りんご","なし"],["切手","はがき"]];
+  const [s1,s2]=shops[randInt(0,2)];
+  const allB=b*totalCount, diffPrice=a-b;
+  const calcQa=(total-allB)/diffPrice;
+  if (calcQa!==qa||calcQa<=0) return genProblem();
+  return {
+    title:"消去算④（応用）", color:"#f59e0b",
+    text:`${s1}と${s2}を合わせて **${totalCount}個** 買い、\n合計金額は **${total}円** でした。\n${s1}は **${a}円**、${s2}は **${b}円** のとき、\nそれぞれ何個買いましたか？`,
+    answers:[{label:`${s1}の個数`,value:qa,unit:"個"},{label:`${s2}の個数`,value:qb,unit:"個"}],
+    hints:[
+      `💡 「もし全部${s2}だったら？」と考えると\nくらべやすくなるよ！`,
+      { kind:"replace",
+        rows:[
+          { label:`もし${totalCount}個全部が${s2}(${b}円)だったら…`,
+            cells:[{label:s2,count:totalCount,...COL[1]}], result:allB, unit:"円" },
+          { label:"実際の買い物は…",
+            cells:[{label:s1,count:qa,...COL[0]},{label:s2,count:qb,...COL[1]}], result:total, unit:"円" },
+        ],
+        diff:{ calc:`${total} － ${allB}`, result:total-allB, unit:"円",
+               note:`${s1}が${s2}より高い分(${a}－${b}＝${diffPrice}円)が積み重なっているよ！` }
+      },
+      `${s1}は${s2}より1個あたり\n${a} － ${b} ＝ ${diffPrice}円 高い！\n${s1}が1個増えるたびに${diffPrice}円増えるよ`,
+      `${s1}の個数 ＝ ${total-allB} ÷ ${diffPrice} ＝ ${qa}個`,
+      `${s1}が${qa}個とわかった！\n${s2}の個数 ＝ ${totalCount} － ${qa} ＝ ${qb}個 ✅`,
+    ],
+  };
+}
+
+// ─── 途中式表示 ────────────────────────────────────────────
+function ScratchDisplay({ scratch, focused }) {
+  if (!scratch) return (
+    <>
+      <span className="scratch-placeholder">ここをタッチして式を入力…</span>
+      {focused&&<span className="cursor-blink">|</span>}
+    </>
+  );
+  return (
+    <>
+      {scratch.split("\n").map((line,li,arr)=>{
+        const parts=line.split(/(＝-?\d+\.?\d*)/g);
+        return (
+          <div key={li} style={{minHeight:"22px",lineHeight:"1.7"}}>
+            {parts.map((p,pi)=>
+              /^＝-?\d+\.?\d*$/.test(p)
+                ?<span key={pi} className="calc-result-badge" style={{background:"#dbeafe",color:"#1d4ed8",borderBottom:"2px solid #93c5fd"}}>{p}</span>
+                :<span key={pi}>{p}</span>
+            )}
+            {focused&&li===arr.length-1&&<span className="cursor-blink">|</span>}
+          </div>
+        );
+      })}
+    </>
+  );
+}
+
+const STORAGE_KEY="shoukyo_best_streak";
+
+// ─── アプリ ────────────────────────────────────────────────
+function App() {
+  const [mode,setMode]             = useState("setup");
+  const [totalQ,setTotalQ]         = useState(10);
+  const [problems,setProblems]     = useState([]);
+  const [current,setCurrent]       = useState(0);
+  const [score,setScore]           = useState(0);
+  const [scratch,setScratch]       = useState("");
+  const [calcError,setCalcError]   = useState(false);
+  const [answerVals,setAnswerVals] = useState({});
+  const [focused,setFocused]       = useState("scratch");
+  const [checked,setChecked]       = useState(false);
+  const [correct,setCorrect]       = useState({});
+  const [hintIdx,setHintIdx]       = useState(-1);
+  const [celeb,setCeleb]           = useState(false);
+  const [streak,setStreak]         = useState(0);
+  const [best,setBest]             = useState(0);
+  const [confirmOpen,setConfirmOpen] = useState(false);
+
+  useEffect(()=>{
+    try{const s=localStorage.getItem(STORAGE_KEY);if(s)setBest(parseInt(s)||0);}catch(_){}
+  },[]);
+  const saveBest=v=>{try{localStorage.setItem(STORAGE_KEY,String(v));}catch(_){}};
+
+  const startQuiz=()=>{
+    setProblems(Array.from({length:totalQ},()=>genProblem()));
+    setCurrent(0);setScore(0);setStreak(0);
+    setScratch("");setAnswerVals({});setFocused("scratch");
+    setChecked(false);setCorrect({});setHintIdx(-1);setCeleb(false);
+    setMode("quiz");
+  };
+
+  const isScratch=focused==="scratch";
+  const ansIdx=isScratch?-1:parseInt(focused.split("-")[1]);
+  const problem=problems[current]||null;
+
+  const pressKey=useCallback((key)=>{
+    if(key.val==="CALC"){
+      if(!isScratch)return;
+      const result=evalExpr(getExprToParse(scratch));
+      if(result===null){setCalcError(true);setTimeout(()=>setCalcError(false),600);return;}
+      setScratch(s=>s+`＝${result}`);return;
+    }
+    if(isScratch){
+      if(key.val==="BACK") setScratch(s=>{const m=s.match(/(＝-?\d+\.?\d*)$/);return m?s.slice(0,-m[0].length):s.slice(0,-1);});
+      else if(key.val==="CLEAR") setScratch("");
+      else if(key.val==="=")     setScratch(s=>s+"\n");
+      else setScratch(s=>s+key.val);
+    } else {
+      if(key.type==="op"||key.val==="CALC")return;
+      setAnswerVals(prev=>{
+        const cur=prev[ansIdx]||"";
+        if(key.val==="BACK")  return{...prev,[ansIdx]:cur.slice(0,-1)};
+        if(key.val==="CLEAR") return{...prev,[ansIdx]:""};
+        if(cur.length>=5)     return prev;
+        return{...prev,[ansIdx]:cur+key.val};
+      });
+    }
+  },[isScratch,ansIdx,scratch]);
+
+  const checkAll=()=>{
+    const result={};
+    problem.answers.forEach((a,i)=>{result[i]=parseInt(answerVals[i]||"")===a.value;});
+    setCorrect(result);setChecked(true);
+    if(Object.values(result).every(Boolean)){
+      setScore(s=>s+1);
+      const ns=streak+1;setStreak(ns);
+      if(ns>best){setBest(ns);saveBest(ns);}
+      setCeleb(true);setTimeout(()=>setCeleb(false),2000);
+    } else {setStreak(0);}
+  };
+
+  const nextQuestion=()=>{
+    if(current+1>=totalQ){setMode("result");return;}
+    setCurrent(c=>c+1);
+    setScratch("");setAnswerVals({});setFocused("scratch");
+    setChecked(false);setCorrect({});setHintIdx(-1);setCeleb(false);
+  };
+
+  const allCorrect=checked&&Object.values(correct).every(Boolean);
+
+  // ── セットアップ ─────────────────────────────────────────
+  if(mode==="setup") return(
+    <div style={{minHeight:"100vh",background:"#eff6ff",display:"flex",alignItems:"flex-start",justifyContent:"center",padding:"20px 12px"}}>
+      <div style={{background:"#fff",borderRadius:"20px",padding:"32px 24px",textAlign:"center",boxShadow:"0 4px 24px rgba(0,0,0,0.10)",marginTop:"16px",width:"100%",maxWidth:"400px"}}>
+        <div style={{fontSize:"56px",marginBottom:"8px"}}>🔢</div>
+        <h1 style={{fontSize:"24px",fontWeight:"900",color:"#1e3a8a",margin:"0 0 4px"}}>消去算 練習</h1>
+        <p style={{color:"#6b7280",fontSize:"13px",marginBottom:"20px"}}>小学校高学年レベル</p>
+        {best>0&&<div style={{background:"#dbeafe",border:"1.5px solid #93c5fd",borderRadius:"12px",padding:"10px 16px",fontSize:"15px",color:"#1e3a8a",marginBottom:"20px",display:"inline-block"}}>🏆 最高連続記録：<strong>{best}問</strong></div>}
+        <div style={{fontSize:"13px",fontWeight:"bold",color:"#6b7280",marginBottom:"10px",textTransform:"uppercase",letterSpacing:"0.05em"}}>何問やる？</div>
+        <div style={{display:"flex",gap:"10px",justifyContent:"center",marginBottom:"24px"}}>
+          {Q_OPTIONS.map(n=>(
+            <button key={n} style={{padding:"12px 18px",borderRadius:"12px",border:totalQ===n?"2px solid #2563eb":"2px solid #d1d5db",background:totalQ===n?"#3b82f6":"#f9fafb",fontSize:"16px",fontWeight:"bold",color:totalQ===n?"#fff":"#374151",cursor:"pointer",boxShadow:totalQ===n?"0 3px 0 #1d4ed8":"none"}} onClick={()=>setTotalQ(n)}>{n}問</button>
+          ))}
+        </div>
+        <button style={{width:"100%",padding:"14px",background:"linear-gradient(135deg,#60a5fa,#3b82f6)",border:"none",borderRadius:"14px",fontSize:"16px",fontWeight:"900",color:"#fff",cursor:"pointer",boxShadow:"0 4px 0 #1d4ed8"}} onClick={startQuiz}>スタート！ 🚀</button>
+      </div>
+    </div>
+  );
+
+  // ── 結果 ─────────────────────────────────────────────────
+  if(mode==="result"){
+    const pct=Math.round((score/totalQ)*100);
+    return(
+      <div style={{minHeight:"100vh",background:"#eff6ff",display:"flex",alignItems:"flex-start",justifyContent:"center",padding:"20px 12px"}}>
+        <div style={{background:"#fff",borderRadius:"20px",padding:"32px 24px",textAlign:"center",boxShadow:"0 4px 24px rgba(0,0,0,0.10)",marginTop:"16px",width:"100%",maxWidth:"400px"}}>
+          <div style={{fontSize:"56px",marginBottom:"8px"}}>{pct===100?"🏆":pct>=70?"🎉":"💪"}</div>
+          <h2 style={{fontSize:"24px",fontWeight:"900",color:"#1e3a8a",margin:"0 0 8px"}}>おわり！</h2>
+          <p style={{fontSize:"16px",color:"#374151",margin:"0 0 8px"}}>{totalQ}問中 <span style={{fontSize:"48px",fontWeight:"bold",color:"#3b82f6"}}>{score}</span> 問正解</p>
+          <div style={{height:"10px",background:"#dbeafe",borderRadius:"99px",margin:"8px 0 4px"}}>
+            <div style={{height:"100%",background:"linear-gradient(90deg,#60a5fa,#3b82f6)",borderRadius:"99px",width:`${pct}%`}}/>
+          </div>
+          <p style={{textAlign:"center",color:"#6b7280",fontSize:"14px",marginBottom:"16px"}}>{pct}%</p>
+          <div style={{display:"flex",gap:"10px",marginBottom:"16px"}}>
+            <div style={{flex:1,background:"#f9fafb",borderRadius:"12px",padding:"12px",textAlign:"center"}}>
+              <div style={{fontSize:"11px",color:"#6b7280",fontWeight:"bold",marginBottom:"4px"}}>この回の最高連続</div>
+              <div style={{fontSize:"20px",fontWeight:"900",color:"#ef4444"}}>🔥 {streak}問</div>
+            </div>
+            <div style={{flex:1,background:"#f9fafb",borderRadius:"12px",padding:"12px",textAlign:"center"}}>
+              <div style={{fontSize:"11px",color:"#6b7280",fontWeight:"bold",marginBottom:"4px"}}>歴代最高連続</div>
+              <div style={{fontSize:"20px",fontWeight:"900",color:"#f59f00"}}>🏆 {best}問</div>
+            </div>
+          </div>
+          <div style={{display:"flex",gap:"8px"}}>
+            <button style={{flex:1,padding:"14px",background:"linear-gradient(135deg,#60a5fa,#3b82f6)",border:"none",borderRadius:"14px",fontSize:"16px",fontWeight:"900",color:"#fff",cursor:"pointer",boxShadow:"0 4px 0 #1d4ed8"}} onClick={startQuiz}>もう一度</button>
+            <button style={{flex:1,padding:"14px",background:"#6b7280",border:"none",borderRadius:"14px",fontSize:"16px",fontWeight:"900",color:"#fff",cursor:"pointer",boxShadow:"0 4px 0 #374151"}} onClick={()=>setMode("setup")}>設定へ</button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if(!problem) return null;
+  const progress=(current/totalQ)*100;
+
+  // ── クイズ ────────────────────────────────────────────────
+  return(
+    <div className="quiz-root" style={{background:"#eff6ff"}}>
+
+      {confirmOpen&&(
+        <div className="confirm-overlay" onClick={()=>setConfirmOpen(false)}>
+          <div className="confirm-sheet" onClick={e=>e.stopPropagation()}>
+            <div className="confirm-title">📝 答え合わせする？</div>
+            <div className="confirm-sub">まだ直したいところはない？</div>
+            <div className="confirm-btn-row">
+              <button className="confirm-cancel-btn" onClick={()=>setConfirmOpen(false)}>もどる</button>
+              <button className="confirm-ok-btn" style={{background:"linear-gradient(135deg,#60a5fa,#3b82f6)",color:"#fff"}} onClick={()=>{setConfirmOpen(false);checkAll();}}>答え合わせ ✔</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {celeb&&(
+        <div style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.35)",display:"flex",alignItems:"center",justifyContent:"center",zIndex:100}}>
+          <div style={{background:"#fff",borderRadius:"24px",padding:"40px 48px",textAlign:"center",boxShadow:"0 20px 60px rgba(0,0,0,0.3)",animation:"popIn 0.35s cubic-bezier(.34,1.56,.64,1)"}}>
+            <div style={{fontSize:"64px",marginBottom:"8px"}}>🎉</div>
+            <div style={{fontSize:"32px",fontWeight:"900",color:"#1d4ed8"}}>せいかい！</div>
+            <div style={{fontSize:"20px",marginTop:"8px"}}>{randomStars(5)}</div>
+            {streak>=3&&<div style={{marginTop:"12px",background:"#ef4444",color:"#fff",padding:"6px 16px",borderRadius:"99px",fontWeight:"bold",fontSize:"16px",display:"inline-block"}}>🔥 {streak}れんぞく！</div>}
+            {streak===best&&streak>1&&<div style={{marginTop:"6px",background:"#f59f00",color:"#fff",padding:"6px 16px",borderRadius:"99px",fontWeight:"bold",fontSize:"16px",display:"inline-block"}}>🏆 新記録！</div>}
+          </div>
+        </div>
+      )}
+
+      {/* ヘッダー */}
+      <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+        <div style={{display:"flex",alignItems:"center",gap:"8px"}}>
+          <span style={{fontWeight:"900",fontSize:"20px",color:"#1e3a8a"}}>Q{current+1}<span style={{fontSize:"13px",color:"#93c5fd",fontWeight:"normal"}}>/{totalQ}</span></span>
+          <span style={{fontSize:"11px",fontWeight:"bold",color:"#fff",padding:"3px 10px",borderRadius:"99px",background:problem.color}}>{problem.title}</span>
+        </div>
+        <div style={{display:"flex",alignItems:"center",gap:"6px"}}>
+          <span style={{fontSize:"14px",color:"#374151",fontWeight:"bold"}}>⭐ {score}</span>
+          {streak>=2&&<span style={{background:"#ef4444",color:"#fff",fontSize:"12px",padding:"2px 8px",borderRadius:"99px",fontWeight:"bold"}}>🔥{streak}</span>}
+          {best>0&&<span style={{background:"#fde68a",color:"#92400e",fontSize:"12px",padding:"2px 8px",borderRadius:"99px",fontWeight:"bold"}}>🏆{best}</span>}
+        </div>
+      </div>
+
+      {/* プログレスバー */}
+      <div style={{height:"6px",background:"#bfdbfe",borderRadius:"99px"}}>
+        <div style={{height:"100%",borderRadius:"99px",transition:"width 0.4s",background:problem.color,width:`${progress}%`}}/>
+      </div>
+
+      {/* 問題文 */}
+      <div style={{background:"#fff",borderRadius:"16px",padding:"16px 18px",boxShadow:"0 2px 12px rgba(0,0,0,0.08)",borderTop:`5px solid ${problem.color}`}}>
+        {problem.text.split("\n").map((line,i)=>(
+          <p key={i} style={{margin:"4px 0",fontSize:"15px",lineHeight:"1.8",color:"#1f2937"}}>
+            {line.split(/(\*\*[^*]+\*\*)/).map((seg,j)=>
+              seg.startsWith("**")
+                ?<strong key={j} style={{fontSize:"18px",fontWeight:"900",color:problem.color}}>{seg.replace(/\*\*/g,"")}</strong>
+                :seg
+            )}
+          </p>
+        ))}
+      </div>
+
+      {/* ヒント */}
+      <div className="hint-section">
+        <div className="hint-controls">
+          <button className="hint-btn"
+            onClick={()=>setHintIdx(h=>Math.min(h+1,problem.hints.length-1))}
+            disabled={hintIdx>=problem.hints.length-1}
+          >
+            💡 ヒント{hintIdx<0?"を見る":`(${hintIdx+1}/${problem.hints.length})`}
+          </button>
+          {hintIdx>=0&&(
+            <button className="hint-close-btn" onClick={()=>setHintIdx(-1)}>
+              ✕ 閉じる
+            </button>
+          )}
+        </div>
+        {hintIdx>=0&&(
+          <div className="hint-box">
+            {problem.hints.slice(0,hintIdx+1).map((h,i)=>(
+              <HintItem key={i} hint={h} faded={i<hintIdx} />
+            ))}
+          </div>
+        )}
+      </div>
+
+      {/* 途中式 */}
+      <div
+        style={{background:"#fff",border:`2px solid ${calcError?"#ef4444":isScratch?"#3b82f6":"#e5e7eb"}`,borderRadius:"14px",padding:"10px 14px",minHeight:"72px",cursor:"text",transition:"border-color 0.2s",boxShadow:isScratch&&!calcError?"0 0 0 3px rgba(59,130,246,0.15)":calcError?"0 0 0 3px rgba(239,68,68,0.15)":"none",backgroundColor:calcError?"#fef2f2":"#fff"}}
+        onClick={()=>setFocused("scratch")}
+      >
+        <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:"6px"}}>
+          <span style={{fontSize:"11px",fontWeight:"bold",color:"#9ca3af",textTransform:"uppercase",letterSpacing:"0.05em"}}>📝 途中式</span>
+          <span style={{fontSize:"10px",color:"#d1d5db"}}>＝計算 で自動計算</span>
+        </div>
+        <div style={{fontSize:"15px",color:"#1f2937",lineHeight:"1.6",minHeight:"24px",fontFamily:"monospace",wordBreak:"break-all"}}>
+          <ScratchDisplay scratch={scratch} focused={isScratch}/>
+        </div>
+      </div>
+
+      {/* 答え欄 */}
+      <div style={{display:"flex",gap:"8px"}}>
+        {problem.answers.map((a,i)=>{
+          const isFoc=focused===`ans-${i}`;
+          const isOk=checked?correct[i]:null;
+          return(
+            <div key={i}
+              style={{flex:1,background:isOk===true?"#dbeafe":isOk===false?"#fef2f2":"#fff",border:`2px solid ${isFoc?"#3b82f6":isOk===true?"#60a5fa":isOk===false?"#ef4444":"#e5e7eb"}`,borderRadius:"14px",padding:"10px 12px",cursor:"text",transition:"all 0.2s",position:"relative",minHeight:"72px",boxShadow:isFoc?"0 0 0 3px rgba(59,130,246,0.15)":"none"}}
+              onClick={()=>setFocused(`ans-${i}`)}
+            >
+              <div style={{fontSize:"11px",fontWeight:"bold",color:"#6b7280",marginBottom:"4px"}}>{a.label}</div>
+              <div style={{fontSize:"22px",fontWeight:"900",color:"#1f2937"}}>
+                {answerVals[i]||<span style={{color:"#d1d5db",fontSize:"14px"}}>?</span>}
+                {isFoc&&<span className="cursor-blink">|</span>}
+              </div>
+              {a.unit&&answerVals[i]&&<span style={{fontSize:"13px",color:"#6b7280"}}>{a.unit}</span>}
+              {isOk===true &&<div style={{position:"absolute",top:"8px",right:"10px",fontSize:"16px"}}>✅</div>}
+              {isOk===false&&<div style={{position:"absolute",top:"8px",right:"10px",fontSize:"16px"}}>❌</div>}
+              {checked&&isOk===false&&<div style={{fontSize:"12px",color:"#1d4ed8",fontWeight:"bold",marginTop:"2px"}}>→ {a.value}{a.unit}</div>}
+            </div>
+          );
+        })}
+      </div>
+
+      {/* キーパッド */}
+      <div style={{background:"#bfdbfe",borderRadius:"18px",padding:"10px",display:"flex",flexDirection:"column",gap:"6px"}}>
+        {KEYPAD.map((row,ri)=>(
+          <div key={ri} style={{display:"flex",gap:"6px"}}>
+            {row.map(key=>{
+              const dis=!isScratch&&(key.type==="op"||key.val==="CALC");
+              let bg="#fff",color="#1f2937";
+              if(key.type==="op")  {bg="#93c5fd";color="#1e3a8a";}
+              if(key.type==="ctrl"){bg="#fca5a5";color="#fff";}
+              if(key.val==="CALC") {bg="linear-gradient(135deg,#60a5fa,#3b82f6)";color="#fff";}
+              if(dis)              {bg="#e5e7eb";color="#9ca3af";}
+              return(
+                <button key={key.val}
+                  style={{flex:1,height:"52px",borderRadius:"12px",border:"none",fontSize:key.val==="CALC"?"13px":"18px",fontWeight:"bold",cursor:dis?"default":"pointer",fontFamily:"inherit",background:bg,color,boxShadow:dis?"none":"0 3px 0 rgba(0,0,0,0.15)",transition:"transform 0.08s"}}
+                  onClick={()=>!dis&&pressKey(key)} disabled={dis}
+                >{key.label}</button>
+              );
+            })}
+          </div>
+        ))}
+      </div>
+
+      {/* アクション */}
+      <div style={{display:"flex",gap:"8px",paddingBottom:"16px"}}>
+        {!checked?(
+          <button style={{flex:1,padding:"14px",background:"linear-gradient(135deg,#60a5fa,#3b82f6)",border:"none",borderRadius:"14px",fontSize:"16px",fontWeight:"900",color:"#fff",cursor:"pointer",boxShadow:"0 4px 0 #1d4ed8"}} onClick={()=>setConfirmOpen(true)}>
+            こたえをチェック ✔
+          </button>
+        ):(
+          <>
+            <button style={{flex:1,padding:"14px",background:"linear-gradient(135deg,#4ade80,#22c55e)",border:"none",borderRadius:"14px",fontSize:"16px",fontWeight:"900",color:"#14532d",cursor:"pointer",boxShadow:"0 4px 0 #15803d"}} onClick={nextQuestion}>
+              {current+1>=totalQ?"結果を見る 🎉":"つぎへ →"}
+            </button>
+            {!allCorrect&&(
+              <button style={{padding:"14px 18px",background:"#fff",border:"2px solid #e5e7eb",borderRadius:"14px",fontSize:"14px",fontWeight:"bold",color:"#6b7280",cursor:"pointer"}} onClick={()=>{setChecked(false);setCorrect({});}}>
+                やりなおす
+              </button>
+            )}
+          </>
+        )}
+      </div>
+    </div>
+  );
+}
+
+ReactDOM.createRoot(document.getElementById("root")).render(<App/>);
+</script>
+</body>
+</html>
