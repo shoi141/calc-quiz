@@ -25,75 +25,84 @@ function genProblem() {
   const type = Math.floor(Math.random() * 4);
 
   if (type === 0) {
-    const diff=randInt(1,4), people=randInt(4,15), small=randInt(2,6);
-    const large=small+diff, amari=randInt(1,6), fusoku=people*diff-amari;
-    if(fusoku<=0) return genProblem();
-    const items=[["クッキー","人"],["あめ","人"],["シール","人"],["カード","人"],["鉛筆","人"]];
-    const [item]=items[randInt(0,4)];
+    // 2種類の品物を同じ数ずつ買う → 代金の差から個数を求める
+    const n = randInt(3,12);
+    const pa = randInt(50,200)*10, pb = randInt(20,pa/10-1)*10;
+    if (pa <= pb) return genProblem();
+    const diff = pa - pb, total_diff = diff * n;
+    const items=[
+      ["りんご","みかん"],["ノート","えんぴつ"],["ジュース","お茶"],
+      ["チョコ","ガム"],["消しゴム","シール"]
+    ][randInt(0,4)];
     return {
       title:"差集め算①", color:"#22c55e",
-      text:`${item}を子どもたちに配ります。\n1人に **${small}個** ずつ配ると **${amari}個** 余り、\n1人に **${large}個** ずつ配ると **${fusoku}個** 足りません。\n子どもは何人いますか？`,
-      answers:[{label:"子どもの人数",value:people}],
+      text:`${items[0]}と${items[1]}を同じ数ずつ買います。\n${items[0]}は1個 **${pa}円**、${items[1]}は1個 **${pb}円** です。\n代金の合計の差は **${total_diff}円** でした。\nそれぞれ何個買いましたか？`,
+      answers:[{label:"個数",value:n,unit:"個"}],
       hints:[
-        `🔑 差集め算の公式：人数 ＝ (余り ＋ 不足) ÷ 1人あたりの差`,
-        `1人あたりの差 ＝ ${large} − ${small} ＝ ${diff}`,
-        `余り ＋ 不足 ＝ ${amari} ＋ ${fusoku} ＝ ${amari+fusoku}`,
-        `人数 ＝ ${amari+fusoku} ÷ ${diff} ＝ ${people}人 ✅`,
+        `🔑 1個あたりの差 × 個数 ＝ 代金の差`,
+        `1個あたりの差：${pa}−${pb}＝${diff}円`,
+        `個数：${total_diff}÷${diff}＝${n}個 ✅`,
       ],
     };
   }
+
   if (type === 1) {
-    const diff=randInt(1,3), people=randInt(5,15), small=randInt(2,5);
-    const large=small+diff, amari_large=randInt(1,4);
-    const amari_small=amari_large+people*diff;
-    if(amari_small>30) return genProblem();
-    const items=[["ノート","人"],["消しゴム","人"],["折り紙","人"],["ビー玉","人"]];
-    const [item]=items[randInt(0,3)];
+    // 大人と子どもが同じ人数 → 入場料の差から人数を求める
+    const n = randInt(3,15);
+    const adult = randInt(300,1000), child = randInt(100,adult-100);
+    if (adult <= child) return genProblem();
+    const diff = adult - child, total_diff = diff * n;
     return {
-      title:"差集め算②（両方余る）", color:"#3b82f6",
-      text:`${item}を子どもたちに配ります。\n1人に **${small}個** ずつ配ると **${amari_small}個** 余り、\n1人に **${large}個** ずつ配ると **${amari_large}個** 余ります。\n子どもは何人いますか？`,
-      answers:[{label:"子どもの人数",value:people}],
+      title:"差集め算②", color:"#3b82f6",
+      text:`大人と子どもが同じ人数います。\n大人の入場料：1人 **${adult}円**\n子どもの入場料：1人 **${child}円**\n合計金額の差は **${total_diff}円** でした。\nそれぞれ何人いますか？`,
+      answers:[{label:"人数",value:n,unit:"人"}],
       hints:[
-        `🔑 両方余るとき：人数 ＝ (余りの差) ÷ (1人あたりの差)`,
-        `1人あたりの差 ＝ ${large} − ${small} ＝ ${diff}`,
-        `余りの差 ＝ ${amari_small} − ${amari_large} ＝ ${amari_small-amari_large}`,
-        `人数 ＝ ${amari_small-amari_large} ÷ ${diff} ＝ ${people}人 ✅`,
+        `🔑 1人あたりの差 × 人数 ＝ 合計の差`,
+        `1人あたりの差：${adult}−${child}＝${diff}円`,
+        `人数：${total_diff}÷${diff}＝${n}人 ✅`,
       ],
     };
   }
+
   if (type === 2) {
-    const diff=randInt(1,3), people=randInt(5,15), small=randInt(2,5);
-    const large=small+diff, fusoku_small=randInt(1,4);
-    const fusoku_large=fusoku_small+people*diff;
-    if(fusoku_large>40) return genProblem();
-    const items=[["キャンディー","人"],["メダル","人"],["カラーペン","人"],["豆","人"]];
-    const [item]=items[randInt(0,3)];
+    // 2種類の作業を同じ時間ずつ → 完成数の差から時間を求める
+    const t = randInt(3,10);
+    const fa = randInt(6,20), fb = randInt(2,fa-2);
+    if (fa <= fb) return genProblem();
+    const diff = fa - fb, total_diff = diff * t;
+    const tasks=[
+      ["機械A","機械B","個"],["速い人","遅い人","枚"],["工場X","工場Y","個"]
+    ][randInt(0,2)];
     return {
-      title:"差集め算③（両方不足）", color:"#f59e0b",
-      text:`${item}を子どもたちに配ります。\n1人に **${small}個** ずつ配ると **${fusoku_small}個** 足りなく、\n1人に **${large}個** ずつ配ると **${fusoku_large}個** 足りません。\n子どもは何人いますか？`,
-      answers:[{label:"子どもの人数",value:people}],
+      title:"差集め算③", color:"#f59e0b",
+      text:`${tasks[0]}と${tasks[1]}が同じ時間だけ働きます。\n${tasks[0]}は1時間に **${fa}${tasks[2]}**、\n${tasks[1]}は1時間に **${fb}${tasks[2]}** 作ります。\n合計の差が **${total_diff}${tasks[2]}** のとき、\n何時間働きましたか？`,
+      answers:[{label:"時間",value:t,unit:"時間"}],
       hints:[
-        `🔑 両方不足のとき：人数 ＝ (不足の差) ÷ (1人あたりの差)`,
-        `1人あたりの差 ＝ ${large} − ${small} ＝ ${diff}`,
-        `不足の差 ＝ ${fusoku_large} − ${fusoku_small} ＝ ${fusoku_large-fusoku_small}`,
-        `人数 ＝ ${fusoku_large-fusoku_small} ÷ ${diff} ＝ ${people}人 ✅`,
+        `🔑 1時間あたりの差 × 時間 ＝ 合計の差`,
+        `1時間あたりの差：${fa}−${fb}＝${diff}${tasks[2]}`,
+        `時間：${total_diff}÷${diff}＝${t}時間 ✅`,
       ],
     };
   }
-  const diff=randInt(1,3), chairs=randInt(4,12), small=randInt(3,5);
-  const large=small+diff, amari=randInt(1,5), fusoku=chairs*diff-amari;
-  if(fusoku<=0) return genProblem();
-  const people=small*chairs+amari;
-  const sc=[{place:"長椅子",unit:"脚",verb:"座る",each:"人"},{place:"バス",unit:"台",verb:"乗る",each:"人"},{place:"テーブル",unit:"台",verb:"座る",each:"人"}][randInt(0,2)];
+
+  // type === 3: 長さ・面積の差集め算
+  const n = randInt(4,15);
+  const wa = randInt(5,15), wb = randInt(2,wa-2);
+  if (wa <= wb) return genProblem();
+  const diff = wa - wb, total_diff = diff * n;
+  const things=[
+    ["赤いリボン","青いリボン","cm"],
+    ["A商品","B商品","g"],
+    ["太いロープ","細いロープ","cm"]
+  ][randInt(0,2)];
   return {
     title:"差集め算④（応用）", color:"#ec4899",
-    text:`${sc.place}に${sc.each}が${sc.verb}ます。\n1${sc.unit}に **${small}${sc.each}** ずつだと **${amari}${sc.each}** 余り、\n1${sc.unit}に **${large}${sc.each}** ずつだと **${fusoku}${sc.each}** 足りません。\n${sc.place}の数と人数をそれぞれ求めなさい。`,
-    answers:[{label:`${sc.place}の数`,value:chairs},{label:"人数",value:people}],
+    text:`${things[0]}と${things[1]}を同じ本数ずつ用意します。\n${things[0]}は1本 **${wa}${things[2]}**、\n${things[1]}は1本 **${wb}${things[2]}** です。\n長さの合計の差が **${total_diff}${things[2]}** のとき、\n何本ずつ用意しましたか？`,
+    answers:[{label:"本数",value:n,unit:"本"}],
     hints:[
-      `🔑 まず${sc.place}の数を求めよう`,
-      `1${sc.unit}あたりの差 ＝ ${large} − ${small} ＝ ${diff}`,
-      `${sc.place}の数 ＝ (${amari} ＋ ${fusoku}) ÷ ${diff} ＝ ${chairs}${sc.unit}`,
-      `人数 ＝ ${small} × ${chairs} ＋ ${amari} ＝ ${people}人 ✅`,
+      `🔑 1本あたりの差 × 本数 ＝ 合計の差`,
+      `1本あたりの差：${wa}−${wb}＝${diff}${things[2]}`,
+      `本数：${total_diff}÷${diff}＝${n}本 ✅`,
     ],
   };
 }
