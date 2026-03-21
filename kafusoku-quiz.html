@@ -18,80 +18,95 @@
 <div id="root"></div>
 <script type="text/babel">
 const { useState, useCallback, useEffect } = React;
-const STORAGE_KEY = "kafusoku_best_streak";
+const STORAGE_KEY = "kafusoku_best";
+
 
 function genProblem() {
   const type = Math.floor(Math.random() * 3);
-
   if (type === 0) {
-    // 全員に配るとき余りと不足
-    const n = randInt(5,15), small=randInt(2,6), large=small+randInt(2,4);
-    const amari=randInt(1,8), fusoku=randInt(1,8);
+    const n=randInt(5,15), small=randInt(2,6), large=small+randInt(2,4);
+    const amari=randInt(1,8);
     const total = small*n + amari;
-    if (large*n - total !== fusoku) { return genProblem(); }
+    const fusoku = large*n - total;
+    if (fusoku <= 0) return genProblem();
     return {
       title:"過不足算①", color:"#06b6d4",
       text:`${n}人に${small}個ずつ配ると **${amari}個** 余り、\n${large}個ずつ配ると **${fusoku}個** 足りません。\n全部で何個ありますか？`,
       answers:[{label:"個数",value:total,unit:"個"}],
-      hints:[
-        "🔑 少ない方の配り方から計算しよう！",
-        `${small}個ずつ×${n}人＋余り${amari}個`,
-        `＝ ${small}×${n}＋${amari} ＝ ${total}個 ✅`,
-      ],
+      hints:["🔑 少ない方の配り方から計算しよう！",`${small}個ずつ×${n}人＋余り${amari}個`,`＝ ${small*n}＋${amari} ＝ ${total}個 ✅`],
     };
   }
   if (type === 1) {
-    // 人数を求める
-    const n=randInt(5,15), small=randInt(2,5), large=small+randInt(1,3);
+    const small=randInt(2,5), diff=randInt(1,3), large=small+diff;
     const amari=randInt(1,6), fusoku=randInt(1,6);
-    const diff=large-small, total_diff=amari+fusoku;
+    const total_diff=amari+fusoku;
     if (total_diff % diff !== 0) return genProblem();
+    const n=total_diff/diff;
     return {
       title:"過不足算②", color:"#0ea5e9",
       text:`えんぴつを何人かに配ります。\n1人に **${small}本** ずつ配ると **${amari}本** 余り、\n1人に **${large}本** ずつ配ると **${fusoku}本** 足りません。\n何人いますか？`,
-      answers:[{label:"人数",value:total_diff/diff,unit:"人"}],
-      hints:[
-        "🔑 (余り＋不足)÷(1人あたりの差)＝人数",
-        `1人あたりの差：${large}−${small}＝${diff}本`,
-        `人数＝(${amari}＋${fusoku})÷${diff}＝${total_diff/diff}人 ✅`,
-      ],
+      answers:[{label:"人数",value:n,unit:"人"}],
+      hints:["🔑 (余り＋不足)÷(1人あたりの差)＝人数",`差：${large}−${small}＝${diff}本`,`人数＝(${amari}＋${fusoku})÷${diff}＝${n}人 ✅`],
     };
   }
-  // 両方余る
-  const n=randInt(5,15), small=randInt(2,5), large=small+randInt(1,3);
-  const amari_s=randInt(4,12), diff=large-small;
-  if (amari_s % diff !== 0) return genProblem();
-  const n2 = amari_s/diff, amari_l = amari_s - diff*n2;
-  if (amari_l < 0) return genProblem();
-  const total = small*n2 + amari_s;
+  const small=randInt(2,5), diff=randInt(1,3), large=small+diff;
+  const amari_l=randInt(1,5);
+  const n=randInt(4,12);
+  const amari_s = amari_l + diff*n;
+  const total = small*n + amari_s;
   return {
     title:"過不足算③（両方余）", color:"#38bdf8",
-    text:`${n2}人に配ります。\n1人に **${small}個** ずつ配ると **${amari_s}個** 余り、\n1人に **${large}個** ずつ配ると **${amari_l}個** 余ります。\n全部で何個ありますか？`,
+    text:`${n}人に配ります。\n1人に **${small}個** ずつ配ると **${amari_s}個** 余り、\n1人に **${large}個** ずつ配ると **${amari_l}個** 余ります。\n全部で何個ありますか？`,
     answers:[{label:"個数",value:total,unit:"個"}],
-    hints:[
-      "🔑 少ない方の配り方から計算しよう！",
-      `${small}個×${n2}人＋${amari_s}個余り`,
-      `＝ ${small*n2}＋${amari_s}＝${total}個 ✅`,
-    ],
+    hints:["🔑 少ない方の配り方から計算しよう！",`${small}個×${n}人＋${amari_s}個余り`,`＝ ${small*n}＋${amari_s}＝${total}個 ✅`],
   };
 }
 
+
+// ─── 途中式表示 ────────────────────────────────────────────
+function ScratchDisplay({ scratch, focused }) {
+  if (!scratch) return (
+    <>
+      <span className="scratch-placeholder">ここをタッチして式を入力…</span>
+      {focused&&<span className="cursor-blink">|</span>}
+    </>
+  );
+  return (
+    <>
+      {scratch.split("\n").map((line,li,arr)=>{
+        const parts=line.split(/(＝-?\d+\.?\d*)/g);
+        return(
+          <div key={li} style={{minHeight:"22px",lineHeight:"1.7"}}>
+            {parts.map((p,pi)=>
+              /^＝-?\d+\.?\d*$/.test(p)
+                ?<span key={pi} className="calc-result-badge" style={{background:"#fff3bf",color:"#e67700",borderBottom:"2px solid #ffd43b"}}>{p}</span>
+                :<span key={pi}>{p}</span>
+            )}
+            {focused&&li===arr.length-1&&<span className="cursor-blink">|</span>}
+          </div>
+        );
+      })}
+    </>
+  );
+}
+
+// ─── アプリ ────────────────────────────────────────────────
 function App() {
-  const [mode,setMode]             = useState("setup");
-  const [totalQ,setTotalQ]         = useState(10);
-  const [problems,setProblems]     = useState([]);
-  const [current,setCurrent]       = useState(0);
-  const [score,setScore]           = useState(0);
-  const [scratch,setScratch]       = useState("");
-  const [calcError,setCalcError]   = useState(false);
-  const [answerVals,setAnswerVals] = useState({});
-  const [focused,setFocused]       = useState("scratch");
-  const [checked,setChecked]       = useState(false);
-  const [correct,setCorrect]       = useState({});
-  const [hintIdx,setHintIdx]       = useState(-1);
-  const [celeb,setCeleb]           = useState(false);
-  const [streak,setStreak]         = useState(0);
-  const [best,setBest]             = useState(0);
+  const [mode,setMode]               = useState("setup");
+  const [totalQ,setTotalQ]           = useState(10);
+  const [problems,setProblems]       = useState([]);
+  const [current,setCurrent]         = useState(0);
+  const [score,setScore]             = useState(0);
+  const [scratch,setScratch]         = useState("");
+  const [calcError,setCalcError]     = useState(false);
+  const [answerVals,setAnswerVals]   = useState({});
+  const [focused,setFocused]         = useState("scratch");
+  const [checked,setChecked]         = useState(false);
+  const [correct,setCorrect]         = useState({});
+  const [hintIdx,setHintIdx]         = useState(-1);
+  const [celeb,setCeleb]             = useState(false);
+  const [streak,setStreak]           = useState(0);
+  const [best,setBest]               = useState(0);
   const [confirmOpen,setConfirmOpen] = useState(false);
 
   useEffect(()=>{
@@ -103,7 +118,7 @@ function App() {
     setProblems(Array.from({length:totalQ},()=>genProblem()));
     setCurrent(0);setScore(0);setStreak(0);
     setScratch("");setAnswerVals({});setFocused("scratch");
-    setChecked(false);setCorrect({});setHintIdx(-1);setCeleb(false);
+    setChecked(false);setCorrect({});setHintIdx(-1);setCeleb(false);setConfirmOpen(false);
     setMode("quiz");
   };
 
@@ -129,7 +144,8 @@ function App() {
         const cur=prev[ansIdx]||"";
         if(key.val==="BACK")  return{...prev,[ansIdx]:cur.slice(0,-1)};
         if(key.val==="CLEAR") return{...prev,[ansIdx]:""};
-        if(cur.length>=5)     return prev;
+        if(key.val==="."&&cur.includes(".")) return prev;
+        if(cur.length>=8)     return prev;
         return{...prev,[ansIdx]:cur+key.val};
       });
     }
@@ -137,7 +153,10 @@ function App() {
 
   const checkAll=()=>{
     const r={};
-    problem.answers.forEach((a,i)=>{r[i]=parseInt(answerVals[i]||"")===a.value;});
+    problem.answers.forEach((a,i)=>{
+      const inputNum=parseFloat(answerVals[i]||"");
+      r[i]=Math.abs(inputNum-a.value)<0.01;
+    });
     setCorrect(r);setChecked(true);
     if(Object.values(r).every(Boolean)){
       setScore(s=>s+1);const ns=streak+1;setStreak(ns);
@@ -155,22 +174,26 @@ function App() {
 
   const allCorrect=checked&&Object.values(correct).every(Boolean);
 
+  const BTN = "linear-gradient(135deg,#38bdf8,#0284c7)";
+  const SHD = "#075985";
+  const TXT = "#fff";
+
   if(mode==="setup") return(
-    <div className="setup-wrap" style={{background:"#fdf6e3"}}>
+    <div className="setup-wrap" style={{background:"#f0f9ff"}}>
       <div className="setup-card">
-        <div className="setup-emoji">✏️</div>
-        <h1 className="setup-title" style={{color:"#212529"}}>和差算 練習</h1>
+        <div className="setup-emoji">📝</div>
+        <h1 className="setup-title">{"過不足算 練習"}</h1>
         <p className="setup-sub">小学校高学年レベル</p>
-        {best>0&&<div className="best-badge" style={{background:"#fff9db",border:"1.5px solid #ffd43b",color:"#5c3d02"}}>🏆 最高連続記録：<strong>{best}問</strong></div>}
+        {best>0&&<div className="best-badge" style={{background:"rgba(0,0,0,0.05)",border:"1.5px solid rgba(0,0,0,0.1)"}}>🏆 最高連続記録：<strong>{best}問</strong></div>}
         <div className="qcount-section">何問やる？</div>
         <div className="qcount-grid">
           {Q_OPTIONS.map(n=>(
             <button key={n} className="qcount-btn"
-              style={{border:totalQ===n?"2px solid #f59f00":"2px solid #dee2e6",background:totalQ===n?"#ffd43b":"#f8f9fa",color:totalQ===n?"#5c3d02":"#495057",boxShadow:totalQ===n?"0 3px 0 #f59f00":"none"}}
+              style={{border:totalQ===n?`2px solid #0284c7`:"2px solid #dee2e6",background:totalQ===n?"#0284c7":"#f8f9fa",color:totalQ===n?"#fff":"#495057",boxShadow:totalQ===n?`0 3px 0 #075985`:"none"}}
               onClick={()=>setTotalQ(n)}>{n}問</button>
           ))}
         </div>
-        <button className="start-btn" style={{background:"linear-gradient(135deg,#ffd43b,#ffa94d)",color:"#5c3d02",boxShadow:"0 4px 0 #f59f00"}} onClick={startQuiz}>スタート！ 🚀</button>
+        <button className="start-btn" style={{background:BTN,color:TXT,boxShadow:`0 4px 0 ${SHD}`}} onClick={startQuiz}>スタート！ 🚀</button>
       </div>
     </div>
   );
@@ -178,19 +201,19 @@ function App() {
   if(mode==="result"){
     const pct=Math.round((score/totalQ)*100);
     return(
-      <div className="setup-wrap" style={{background:"#fdf6e3"}}>
+      <div className="setup-wrap" style={{background:"#f0f9ff"}}>
         <div className="setup-card">
           <div className="setup-emoji">{pct===100?"🏆":pct>=70?"🎉":"💪"}</div>
-          <h2 className="setup-title" style={{color:"#212529"}}>おわり！</h2>
-          <p className="result-score">{totalQ}問中 <span className="result-big" style={{color:"#ff922b"}}>{score}</span> 問正解</p>
-          <div className="pct-bar-bg" style={{background:"#e9ecef"}}><div className="pct-bar-fill" style={{background:"linear-gradient(90deg,#ffd43b,#ffa94d)",width:`${pct}%`}}/></div>
+          <h2 className="setup-title">おわり！</h2>
+          <p className="result-score">{totalQ}問中 <span className="result-big" style={{color:"#0284c7"}}>{score}</span> 問正解</p>
+          <div className="pct-bar-bg" style={{background:"#e9ecef"}}><div className="pct-bar-fill" style={{background:BTN,width:`${pct}%`}}/></div>
           <p className="pct-text">{pct}%</p>
           <div className="streak-result-row">
-            <div className="streak-result-box"><div className="streak-result-label">この回の最高連続</div><div className="streak-result-val" style={{color:"#ff6b6b"}}>🔥 {streak}問</div></div>
+            <div className="streak-result-box"><div className="streak-result-label">この回の最高連続</div><div className="streak-result-val" style={{color:"#ef4444"}}>🔥 {streak}問</div></div>
             <div className="streak-result-box"><div className="streak-result-label">歴代最高連続</div><div className="streak-result-val" style={{color:"#f59f00"}}>🏆 {best}問</div></div>
           </div>
           <div style={{display:"flex",gap:"8px",marginTop:"16px"}}>
-            <button className="start-btn" style={{background:"linear-gradient(135deg,#ffd43b,#ffa94d)",color:"#5c3d02",boxShadow:"0 4px 0 #f59f00"}} onClick={startQuiz}>もう一度</button>
+            <button className="start-btn" style={{background:BTN,color:TXT,boxShadow:`0 4px 0 ${SHD}`}} onClick={startQuiz}>もう一度</button>
             <button className="start-btn" style={{background:"#868e96",color:"#fff",boxShadow:"0 4px 0 #495057"}} onClick={()=>setMode("setup")}>設定へ</button>
           </div>
         </div>
@@ -202,9 +225,7 @@ function App() {
   const progress=(current/totalQ)*100;
 
   return(
-    <div className="quiz-root" style={{background:"#fdf6e3"}}>
-
-      {/* 答え合わせ確認モーダル */}
+    <div className="quiz-root" style={{background:"#f0f9ff"}}>
       {confirmOpen&&(
         <div className="confirm-overlay" onClick={()=>setConfirmOpen(false)}>
           <div className="confirm-sheet" onClick={e=>e.stopPropagation()}>
@@ -212,44 +233,39 @@ function App() {
             <div className="confirm-sub">まだ直したいところはない？</div>
             <div className="confirm-btn-row">
               <button className="confirm-cancel-btn" onClick={()=>setConfirmOpen(false)}>もどる</button>
-              <button className="confirm-ok-btn" style={{background:"linear-gradient(135deg,linear-gradient(135deg,#38bdf8,#0284c7),linear-gradient(135deg,#38bdf8,#0284c7))",color:"#fff"} onClick={()=>{setConfirmOpen(false);checkAll();}}>答え合わせ ✔</button>
+              <button className="confirm-ok-btn" style={{background:BTN,color:TXT}} onClick={()=>{setConfirmOpen(false);checkAll();}}>答え合わせ ✔</button>
             </div>
           </div>
         </div>
       )}
-
-      {/* お祝い */}
       {celeb&&(
         <div className="celeb-overlay">
           <div className="celeb-box">
             <div className="celeb-emoji">🎉</div>
-            <div className="celeb-text" style={{color:"#2f9e44"}}>せいかい！</div>
+            <div className="celeb-text" style={{color:"#0284c7"}}>せいかい！</div>
             <div className="celeb-stars">{randomStars(5)}</div>
-            {streak>=3&&<div className="celeb-streak" style={{background:"#ff6b6b"}}>🔥 {streak}れんぞく！</div>}
+            {streak>=3&&<div className="celeb-streak" style={{background:"#ef4444"}}>🔥 {streak}れんぞく！</div>}
             {streak===best&&streak>1&&<div className="celeb-streak" style={{background:"#f59f00",marginTop:"6px"}}>🏆 新記録！</div>}
           </div>
         </div>
       )}
 
-      {/* ヘッダー */}
       <div className="quiz-header">
         <div className="header-left">
-          <span className="q-label" style={{color:"#343a40"}}>Q{current+1}<span className="q-total">/{totalQ}</span></span>
+          <span className="q-label">Q{current+1}<span className="q-total">/{totalQ}</span></span>
           <span className="type-tag" style={{background:problem.color}}>{problem.title}</span>
         </div>
         <div className="header-right">
-          <span className="score-label" style={{color:"#495057"}}>⭐ {score}</span>
+          <span className="score-label">⭐ {score}</span>
           {streak>=2&&<span className="streak-tag-sm">🔥{streak}</span>}
           {best>0&&<span className="best-tag-sm">🏆{best}</span>}
         </div>
       </div>
 
-      {/* プログレスバー */}
       <div className="progress-bg" style={{background:"#e9ecef"}}>
         <div className="progress-fill" style={{background:problem.color,width:`${progress}%`}}/>
       </div>
 
-      {/* 問題文 */}
       <div className="problem-card" style={{borderTop:`5px solid ${problem.color}`}}>
         {problem.text.split("\n").map((line,i)=>(
           <p key={i} className="problem-line">
@@ -262,7 +278,6 @@ function App() {
         ))}
       </div>
 
-      {/* ヒント */}
       <div className="hint-section">
         <div className="hint-controls">
           <button className="hint-btn"
@@ -271,24 +286,19 @@ function App() {
           >
             💡 ヒント{hintIdx<0?"を見る":`(${hintIdx+1}/${problem.hints.length})`}
           </button>
-          {hintIdx>=0&&(
-            <button className="hint-close-btn" onClick={()=>setHintIdx(-1)}>
-              ✕ 閉じる
-            </button>
-          )}
+          {hintIdx>=0&&<button className="hint-close-btn" onClick={()=>setHintIdx(-1)}>✕ 閉じる</button>}
         </div>
         {hintIdx>=0&&(
           <div className="hint-box">
             {problem.hints.slice(0,hintIdx+1).map((h,i)=>(
-              <div key={i} style={{fontSize:"13px",color:"#495057",lineHeight:"1.8",fontFamily:"monospace",opacity:i<hintIdx?0.55:1}}>{h}</div>
+              <div key={i} style={{fontSize:"13px",color:"#374151",lineHeight:"1.8",fontFamily:"monospace",whiteSpace:"pre-wrap",opacity:i<hintIdx?0.55:1}}>{h}</div>
             ))}
           </div>
         )}
       </div>
 
-      {/* 途中式 */}
       <div className="scratch-area"
-        style={{border:`2px solid ${calcError?"#ff6b6b":isScratch?"#339af0":"#dee2e6"}`,boxShadow:isScratch&&!calcError?"0 0 0 3px rgba(51,154,240,0.15)":calcError?"0 0 0 3px rgba(255,107,107,0.15)":"none",background:calcError?"#fff5f5":"#fff"}}
+        style={{border:`2px solid ${calcError?"#ff6b6b":isScratch?"#0284c7":"#dee2e6"}`,boxShadow:isScratch&&!calcError?`0 0 0 3px ${"#38bdf8"}33`:calcError?"0 0 0 3px rgba(255,107,107,0.15)":"none",background:calcError?"#fff5f5":"#fff"}}
         onClick={()=>setFocused("scratch")}
       >
         <div className="scratch-area-label-row">
@@ -298,30 +308,31 @@ function App() {
         <div className="scratch-display"><ScratchDisplay scratch={scratch} focused={isScratch}/></div>
       </div>
 
-      {/* 答え欄 */}
       <div className="answers-row">
         {problem.answers.map((a,i)=>{
           const isFoc=focused===`ans-${i}`;
           const isOk=checked?correct[i]:null;
           return(
             <div key={i} className="answer-slot"
-              style={{background:isOk===true?"#ebfbee":isOk===false?"#fff5f5":"#fff",border:`2px solid ${isFoc?"#339af0":isOk===true?"#51cf66":isOk===false?"#ff6b6b":"#dee2e6"}`,boxShadow:isFoc?"0 0 0 3px rgba(51,154,240,0.15)":"none"}}
+              style={{background:isOk===true?"#ebfbee":isOk===false?"#fff5f5":"#fff",border:`2px solid ${isFoc?"#0284c7":isOk===true?"#51cf66":isOk===false?"#ff6b6b":"#dee2e6"}`,boxShadow:isFoc?`0 0 0 3px ${"#38bdf8"}33`:"none"}}
               onClick={()=>setFocused(`ans-${i}`)}
             >
               <div className="ans-label">{a.label}</div>
-              <div className="ans-display">
-                {answerVals[i]||<span className="scratch-placeholder">?</span>}
-                {isFoc&&<span className="cursor-blink">|</span>}
+              <div style={{display:"flex",alignItems:"baseline",gap:"4px"}}>
+                <div className="ans-display">
+                  {answerVals[i]||<span className="scratch-placeholder">?</span>}
+                  {isFoc&&<span className="cursor-blink">|</span>}
+                </div>
+                {a.unit&&answerVals[i]&&<span className="ans-unit">{a.unit}</span>}
               </div>
-              {isOk===true &&<div className="ans-badge">✅</div>}
+              {isOk===true&&<div className="ans-badge">✅</div>}
               {isOk===false&&<div className="ans-badge">❌</div>}
-              {checked&&isOk===false&&<div className="ans-correct-val" style={{color:"#2f9e44"}}>→ {a.value}</div>}
+              {checked&&isOk===false&&<div className="ans-correct-val" style={{color:"#0284c7"}}>→ {a.value}{a.unit}</div>}
             </div>
           );
         })}
       </div>
 
-      {/* キーパッド */}
       <div className="keypad" style={{background:"#e9ecef"}}>
         {KEYPAD.map((row,ri)=>(
           <div key={ri} className="key-row">
@@ -330,7 +341,7 @@ function App() {
               let bg="#fff",color="#212529";
               if(key.type==="op")  {bg="#74c0fc";color="#1864ab";}
               if(key.type==="ctrl"){bg="#ff8787";color="#fff";}
-              if(key.val==="CALC") {bg="linear-gradient(135deg,#ffd43b,#ffa94d)";color="#5c3d02";}
+              if(key.val==="CALC") {bg=BTN;color=TXT;}
               if(dis)              {bg="#dee2e6";color="#adb5bd";}
               return(
                 <button key={key.val} className={`key-btn${key.val==="CALC"?" calc":""}${dis?" disabled":""}`}
@@ -343,23 +354,21 @@ function App() {
         ))}
       </div>
 
-      {/* アクション */}
       <div className="action-row">
         {!checked?(
-          <button className="check-btn" style={{background:"linear-gradient(135deg,#ffd43b,#ffa94d)",color:"#5c3d02",boxShadow:"0 4px 0 #f59f00"}} onClick={()=>setConfirmOpen(true)}>こたえをチェック ✔</button>
+          <button className="check-btn" style={{background:BTN,color:TXT,boxShadow:`0 4px 0 ${SHD}`}} onClick={()=>setConfirmOpen(true)}>こたえをチェック ✔</button>
         ):(
           <>
             <button className="next-btn" style={{background:"linear-gradient(135deg,#51cf66,#20c997)",color:"#fff",boxShadow:"0 4px 0 #2f9e44"}} onClick={nextQuestion}>
               {current+1>=totalQ?"結果を見る 🎉":"つぎへ →"}
             </button>
-            {!allCorrect&&<button className="retry-btn" onClick={()=>{setChecked(false);setCorrect({});}}>やりなおす</button>}
+            {!allCorrect&&<button className="retry-btn" onClick={()=>{setChecked(false);setCorrect({});{}}}>やりなおす</button>}
           </>
         )}
       </div>
     </div>
   );
 }
-
 
 ReactDOM.createRoot(document.getElementById("root")).render(<App/>);
 </script>
