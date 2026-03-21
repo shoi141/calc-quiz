@@ -1,0 +1,2556 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>図形問題 練習</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
+<style>
+/* ── リセット ─────────────────────────── */
+* { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+body { font-family: 'Hiragino Maru Gothic ProN', 'Noto Sans JP', sans-serif; }
+
+/* ── アニメーション ───────────────────── */
+@keyframes blink  { 0%,100%{opacity:1} 50%{opacity:0} }
+@keyframes popIn  { from{transform:scale(0.7);opacity:0} to{transform:scale(1);opacity:1} }
+@keyframes floatUp{ from{opacity:0;transform:translateY(20px)} to{opacity:1;transform:translateY(0)} }
+
+/* ── 汎用クラス ───────────────────────── */
+.cursor-blink { display:inline-block; animation:blink 1s step-end infinite; }
+button { -webkit-appearance:none; touch-action:manipulation; }
+button:active { transform:translateY(2px) !important; box-shadow:0 1px 0 rgba(0,0,0,0.18) !important; }
+
+/* ── クイズ共通レイアウト ─────────────── */
+.quiz-root {
+  min-height: 100vh;
+  padding: 12px;
+  max-width: 480px;
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  box-sizing: border-box;
+}
+
+/* ── セットアップ / 結果カード ────────── */
+.setup-wrap {
+  min-height: 100vh;
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  padding: 20px 12px;
+}
+.setup-card {
+  background: #fff;
+  border-radius: 20px;
+  padding: 32px 24px;
+  text-align: center;
+  box-shadow: 0 4px 24px rgba(0,0,0,0.10);
+  margin-top: 16px;
+  width: 100%;
+  max-width: 400px;
+}
+.setup-emoji { font-size: 56px; margin-bottom: 8px; }
+.setup-title { font-size: 24px; font-weight: 900; margin: 0 0 4px; }
+.setup-sub   { color: #6b7280; font-size: 13px; margin-bottom: 20px; }
+.best-badge  {
+  border-radius: 12px; padding: 10px 16px;
+  font-size: 15px; margin-bottom: 20px; display: inline-block;
+}
+.qcount-section {
+  font-size: 13px; font-weight: bold; color: #6b7280;
+  margin-bottom: 10px; text-transform: uppercase; letter-spacing: 0.05em;
+}
+.qcount-grid { display: flex; gap: 10px; justify-content: center; margin-bottom: 24px; }
+.qcount-btn  {
+  padding: 12px 18px; border-radius: 12px;
+  font-size: 16px; font-weight: bold; cursor: pointer;
+}
+.start-btn {
+  width: 100%; padding: 14px;
+  border: none; border-radius: 14px;
+  font-size: 16px; font-weight: 900; cursor: pointer;
+}
+
+/* ── 結果画面 ─────────────────────────── */
+.result-score { font-size: 16px; color: #374151; margin: 0 0 8px; }
+.result-big   { font-size: 48px; font-weight: bold; }
+.pct-bar-bg   { height: 10px; border-radius: 99px; margin: 8px 0 4px; }
+.pct-bar-fill { height: 100%; border-radius: 99px; }
+.pct-text     { text-align: center; color: #6b7280; font-size: 14px; margin-bottom: 16px; }
+.streak-result-row { display: flex; gap: 10px; }
+.streak-result-box {
+  flex: 1; background: #f9fafb; border-radius: 12px;
+  padding: 12px; text-align: center;
+}
+.streak-result-label { font-size: 11px; color: #6b7280; font-weight: bold; margin-bottom: 4px; }
+.streak-result-val   { font-size: 20px; font-weight: 900; }
+
+/* ── ヘッダー ─────────────────────────── */
+.quiz-header  { display: flex; justify-content: space-between; align-items: center; }
+.header-left  { display: flex; align-items: center; gap: 8px; }
+.header-right { display: flex; align-items: center; gap: 6px; }
+.q-label { font-weight: 900; font-size: 20px; }
+.q-total { font-size: 13px; color: #adb5bd; font-weight: normal; }
+.type-tag {
+  font-size: 11px; font-weight: bold; color: #fff;
+  padding: 3px 10px; border-radius: 99px;
+}
+.score-label { font-size: 14px; font-weight: bold; }
+.streak-tag-sm {
+  background: #ef4444; color: #fff; font-size: 12px;
+  padding: 2px 8px; border-radius: 99px; font-weight: bold;
+}
+.best-tag-sm {
+  background: #fde68a; color: #92400e; font-size: 12px;
+  padding: 2px 8px; border-radius: 99px; font-weight: bold;
+}
+
+/* ── プログレスバー ───────────────────── */
+.progress-bg   { height: 6px; border-radius: 99px; }
+.progress-fill { height: 100%; border-radius: 99px; transition: width 0.4s; }
+
+/* ── 問題文カード ─────────────────────── */
+.problem-card {
+  background: #fff; border-radius: 16px;
+  padding: 16px 18px; box-shadow: 0 2px 12px rgba(0,0,0,0.08);
+}
+.problem-line  { margin: 4px 0; font-size: 15px; line-height: 1.8; color: #1f2937; }
+.problem-em    { font-size: 18px; font-weight: 900; }
+
+/* ── ヒント ───────────────────────────── */
+.hint-section  { display: flex; flex-direction: column; gap: 6px; }
+.hint-controls { display: flex; gap: 8px; align-items: center; }
+.hint-btn {
+  align-self: flex-start;
+  background: #fefce8; border: 1.5px solid #fde047;
+  border-radius: 20px; padding: 6px 14px;
+  font-size: 13px; color: #a16207; font-weight: bold; cursor: pointer;
+}
+.hint-close-btn {
+  background: #fff; border: 1.5px solid #e5e7eb;
+  border-radius: 20px; padding: 6px 12px;
+  font-size: 12px; color: #6b7280; font-weight: bold; cursor: pointer;
+}
+.hint-box {
+  background: #fefce8; border-radius: 12px;
+  padding: 12px 14px; border: 1.5px solid #fde047;
+}
+
+/* ── 途中式エリア ─────────────────────── */
+.scratch-area {
+  background: #fff; border-radius: 14px;
+  padding: 10px 14px; min-height: 72px;
+  cursor: text; transition: border-color 0.2s, background 0.2s;
+}
+.scratch-area-label-row {
+  display: flex; justify-content: space-between;
+  align-items: center; margin-bottom: 6px;
+}
+.scratch-area-label {
+  font-size: 11px; font-weight: bold; color: #adb5bd;
+  text-transform: uppercase; letter-spacing: 0.05em;
+}
+.scratch-area-hint { font-size: 10px; color: #d1d5db; }
+.scratch-display {
+  font-size: 15px; color: #1f2937; line-height: 1.6;
+  min-height: 24px; font-family: monospace; word-break: break-all;
+}
+.scratch-placeholder { color: #d1d5db; font-size: 14px; font-family: inherit; }
+.calc-result-badge {
+  display: inline-block; font-weight: 900; font-size: 16px;
+  padding: 0 4px; border-radius: 4px;
+}
+
+/* ── 答え欄 ───────────────────────────── */
+.answers-row { display: flex; gap: 8px; }
+.answer-slot {
+  flex: 1; background: #fff;
+  border-radius: 14px; padding: 10px 12px;
+  cursor: text; transition: all 0.2s;
+  position: relative; min-height: 72px;
+}
+.ans-label   { font-size: 11px; font-weight: bold; color: #6b7280; margin-bottom: 4px; }
+.ans-display { font-size: 22px; font-weight: 900; color: #1f2937; }
+.ans-unit    { font-size: 13px; color: #6b7280; }
+.ans-badge   { position: absolute; top: 8px; right: 10px; font-size: 16px; }
+.ans-correct-val { font-size: 12px; font-weight: bold; margin-top: 2px; }
+
+/* ── キーパッド ───────────────────────── */
+.keypad     { border-radius: 18px; padding: 10px; display: flex; flex-direction: column; gap: 6px; }
+.key-row    { display: flex; gap: 6px; }
+.key-btn {
+  flex: 1; height: 52px; border-radius: 12px; border: none;
+  font-size: 18px; font-weight: bold; cursor: pointer;
+  font-family: inherit; transition: transform 0.08s, box-shadow 0.08s;
+  box-shadow: 0 3px 0 rgba(0,0,0,0.18);
+}
+.key-btn.calc { font-size: 13px; font-weight: 900; }
+.key-btn.disabled { box-shadow: none; cursor: default; }
+
+/* ── アクションボタン ─────────────────── */
+.action-row { display: flex; gap: 8px; padding-bottom: 16px; }
+.check-btn, .next-btn, .retry-btn {
+  padding: 14px; border: none; border-radius: 14px;
+  font-size: 16px; font-weight: 900; cursor: pointer;
+}
+.check-btn { flex: 1; }
+.next-btn  { flex: 1; }
+.retry-btn {
+  padding: 14px 18px; background: #fff;
+  border: 2px solid #e5e7eb; color: #6b7280; font-size: 14px;
+}
+
+/* ── 正解エフェクト ───────────────────── */
+.celeb-overlay {
+  position: fixed; inset: 0; background: rgba(0,0,0,0.35);
+  display: flex; align-items: center; justify-content: center; z-index: 100;
+}
+.celeb-box {
+  background: #fff; border-radius: 24px;
+  padding: 40px 48px; text-align: center;
+  box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+  animation: popIn 0.35s cubic-bezier(.34,1.56,.64,1);
+}
+.celeb-emoji  { font-size: 64px; margin-bottom: 8px; }
+.celeb-text   { font-size: 32px; font-weight: 900; }
+.celeb-stars  { font-size: 20px; margin-top: 8px; }
+.celeb-streak {
+  margin-top: 12px; color: #fff;
+  padding: 6px 16px; border-radius: 99px;
+  font-weight: bold; font-size: 16px; display: inline-block;
+}
+
+/* ── 消去算専用：ビジュアルヒント ────── */
+.eq-visual {
+  background: #f0f9ff; border-radius: 12px;
+  padding: 12px 14px; border: 1.5px solid #bae6fd; margin-top: 6px;
+}
+.eq-visual-title { font-size: 12px; color: #0369a1; font-weight: bold; margin-bottom: 8px; }
+.eq-row { display: flex; align-items: center; flex-wrap: wrap; gap: 4px; padding: 3px 0; }
+.eq-sep { font-size: 13px; font-weight: bold; color: #6b7280; margin: 0 1px; }
+.eq-eq  { font-size: 14px; font-weight: bold; color: #374151; margin: 0 4px; }
+.eq-result { font-size: 16px; font-weight: 900; color: #1e293b; }
+.eq-note {
+  font-size: 11px; color: #0ea5e9; background: #e0f2fe;
+  padding: 2px 7px; border-radius: 10px; white-space: nowrap;
+}
+.pill {
+  display: inline-flex; align-items: center; gap: 4px;
+  border-radius: 16px; padding: 3px 8px;
+  font-size: 12px; font-weight: bold;
+  white-space: nowrap; flex-shrink: 0;
+  border-width: 2px; border-style: solid;
+}
+.pill-count {
+  color: #fff; border-radius: 10px;
+  padding: 1px 6px; font-size: 11px;
+}
+.eq-divider {
+  border-top: 2px dashed #7dd3fc; margin: 8px 0;
+  position: relative;
+}
+.eq-divider-label {
+  position: absolute; top: -11px; left: 50%; transform: translateX(-50%);
+  background: #0ea5e9; color: #fff; font-size: 10px;
+  padding: 2px 8px; border-radius: 10px; white-space: nowrap;
+}
+.replace-visual {
+  background: #f0f9ff; border-radius: 12px;
+  padding: 12px 14px; border: 1.5px solid #bae6fd; margin-top: 6px;
+}
+.replace-row-label { font-size: 11px; font-weight: bold; color: #0369a1; margin-bottom: 4px; }
+.replace-diff {
+  background: #fef3c7; border: 1.5px solid #fcd34d;
+  border-radius: 8px; padding: 8px 10px;
+}
+.replace-diff-main  { font-size: 12px; color: #92400e; font-weight: bold; }
+.replace-diff-note  { font-size: 11px; color: #78350f; margin-top: 3px; }
+
+/* ── 答え合わせ確認モーダル ──────────────── */
+.confirm-overlay {
+  position: fixed; inset: 0;
+  background: rgba(0,0,0,0.4);
+  display: flex; align-items: flex-end; justify-content: center;
+  z-index: 200;
+  animation: fadeIn 0.15s ease;
+}
+@keyframes fadeIn { from{opacity:0} to{opacity:1} }
+.confirm-sheet {
+  background: #fff;
+  border-radius: 24px 24px 0 0;
+  padding: 28px 24px 36px;
+  width: 100%; max-width: 480px;
+  animation: slideUp 0.2s ease;
+}
+@keyframes slideUp { from{transform:translateY(60px);opacity:0} to{transform:translateY(0);opacity:1} }
+.confirm-title {
+  font-size: 18px; font-weight: 900;
+  text-align: center; margin-bottom: 6px; color: #1e293b;
+}
+.confirm-sub {
+  font-size: 13px; color: #64748b;
+  text-align: center; margin-bottom: 20px;
+}
+.confirm-btn-row { display: flex; gap: 10px; }
+.confirm-ok-btn, .confirm-cancel-btn {
+  flex: 1; padding: 14px; border: none;
+  border-radius: 14px; font-size: 16px;
+  font-weight: 900; cursor: pointer;
+}
+.confirm-cancel-btn {
+  background: #f1f5f9; color: #64748b;
+  box-shadow: 0 3px 0 #cbd5e1;
+}
+.confirm-ok-btn {
+  box-shadow: 0 4px 0 #f59f00;
+}
+body { background: #fdf4ff; }
+.cursor-blink { color: #a855f7; }
+.figure-card {
+  background: #fff; border-radius: 16px; padding: 16px;
+  box-shadow: 0 2px 12px rgba(0,0,0,0.08);
+  display: flex; justify-content: center; align-items: center;
+}
+.figure-card svg { overflow: visible; }
+.fig-fill        { fill: #f3e8ff; }
+.fig-stroke      { fill: none; stroke: #9333ea; stroke-width: 2.5; stroke-linejoin: round; }
+.fig-dim         { font-size: 13px; font-weight: bold; fill: #7e22ce; font-family: 'Hiragino Maru Gothic ProN', sans-serif; }
+.fig-angle       { fill: none; stroke: #f59e0b; stroke-width: 1.8; }
+.fig-angle-label { font-size: 12px; font-weight: bold; fill: #b45309; font-family: 'Hiragino Maru Gothic ProN', sans-serif; }
+.fig-right-angle { fill: none; stroke: #9333ea; stroke-width: 1.8; }
+.fig-aux         { fill: none; stroke: #94a3b8; stroke-width: 1.5; stroke-dasharray: 5,4; }
+</style>
+</head>
+<body>
+<div id="root"></div>
+<script>
+// ── 数学ユーティリティ ─────────────────────────────────────
+function randInt(min, max) {
+  return Math.floor(Math.random() * (max - min + 1)) + min;
+}
+function gcd(a, b) { return b === 0 ? a : gcd(b, a % b); }
+function lcm(a, b) { return a / gcd(a, b) * b; }
+function randomStars(n) {
+  return Array.from({length:n}, () => ["⭐","🌟","✨"][randInt(0,2)]).join(" ");
+}
+
+// ── 式の評価 ───────────────────────────────────────────────
+function evalExpr(expr) {
+  try {
+    const n = expr
+      .replace(/×/g,"*").replace(/÷/g,"/")
+      .replace(/−/g,"-").replace(/＋/g,"+")
+      .replace(/[^0-9+\-*/().]/g,"");
+    if (!n.trim()) return null;
+    const r = eval(n); // eslint-disable-line no-eval
+    if (typeof r !== "number" || !isFinite(r)) return null;
+    return Number.isInteger(r) ? r : Math.round(r * 1000) / 1000;
+  } catch { return null; }
+}
+
+// 途中式の計算対象部分を抽出する
+function getExprToParse(scratch) {
+  const lines = scratch.split("\n");
+  const last  = lines[lines.length - 1];
+  const eq    = last.lastIndexOf("＝");
+  return (eq >= 0 ? last.slice(eq + 1) : last).trim();
+}
+
+// ── キーパッド定義 ─────────────────────────────────────────
+const KEYPAD = [
+  [{label:"7",val:"7",type:"num"},{label:"8",val:"8",type:"num"},{label:"9",val:"9",type:"num"},{label:"+",val:"+",type:"op"},{label:"(",val:"(",type:"op"}],
+  [{label:"4",val:"4",type:"num"},{label:"5",val:"5",type:"num"},{label:"6",val:"6",type:"num"},{label:"−",val:"-",type:"op"},{label:")",val:")",type:"op"}],
+  [{label:"1",val:"1",type:"num"},{label:"2",val:"2",type:"num"},{label:"3",val:"3",type:"num"},{label:"×",val:"×",type:"op"},{label:"÷",val:"÷",type:"op"}],
+  [{label:"0",val:"0",type:"num"},{label:"00",val:"00",type:"num"},{label:"⌫",val:"BACK",type:"ctrl"},{label:"＝計算",val:"CALC",type:"calc"},{label:"C",val:"CLEAR",type:"ctrl"}],
+];
+
+const Q_OPTIONS   = [5, 10, 15, 20];
+const {
+  useState,
+  useCallback,
+  useEffect
+} = React;
+const STORAGE_KEY = "zukei_best_streak";
+
+// ─── SVG図形コンポーネント ──────────────────────────────────
+
+// 長方形
+function RectFigure({
+  w,
+  h
+}) {
+  const SW = 300,
+    SH = 230,
+    PAD = 52;
+  const scale = Math.min((SW - PAD * 2) / w, (SH - PAD * 2) / h);
+  const rw = w * scale,
+    rh = h * scale;
+  const x = (SW - rw) / 2,
+    y = (SH - rh) / 2;
+  return /*#__PURE__*/React.createElement("svg", {
+    width: SW,
+    height: SH
+  }, /*#__PURE__*/React.createElement("rect", {
+    x: x,
+    y: y,
+    width: rw,
+    height: rh,
+    className: "fig-fill fig-stroke"
+  }), /*#__PURE__*/React.createElement("path", {
+    d: `M${x + 10},${y} L${x + 10},${y + 10} L${x},${y + 10}`,
+    className: "fig-right-angle"
+  }), /*#__PURE__*/React.createElement("text", {
+    x: x + rw / 2,
+    y: y - 13,
+    textAnchor: "middle",
+    className: "fig-dim"
+  }, w, "cm"), /*#__PURE__*/React.createElement("text", {
+    x: x - 13,
+    y: y + rh / 2,
+    textAnchor: "end",
+    dominantBaseline: "middle",
+    className: "fig-dim"
+  }, h, "cm"));
+}
+
+// 三角形（底辺・高さ付き）
+function TriangleFigure({
+  base,
+  height
+}) {
+  const SW = 300,
+    SH = 250,
+    PAD = 52;
+  const scale = Math.min((SW - PAD * 2) / base, (SH - PAD * 2) / height);
+  const b = base * scale,
+    hh = height * scale;
+  const bx = (SW - b) / 2,
+    by = SH - PAD;
+  const tx = bx + b * 0.35,
+    ty = by - hh;
+  return /*#__PURE__*/React.createElement("svg", {
+    width: SW,
+    height: SH
+  }, /*#__PURE__*/React.createElement("line", {
+    x1: tx,
+    y1: ty,
+    x2: tx,
+    y2: by,
+    className: "fig-aux"
+  }), /*#__PURE__*/React.createElement("path", {
+    d: `M${tx + 5},${ty + 10} L${tx + 10},${ty + 10} L${tx + 10},${ty}`,
+    className: "fig-right-angle"
+  }), /*#__PURE__*/React.createElement("polygon", {
+    points: `${bx},${by} ${bx + b},${by} ${tx},${ty}`,
+    className: "fig-fill fig-stroke"
+  }), /*#__PURE__*/React.createElement("text", {
+    x: bx + b / 2,
+    y: by + 20,
+    textAnchor: "middle",
+    className: "fig-dim"
+  }, base, "cm"), /*#__PURE__*/React.createElement("text", {
+    x: tx + 16,
+    y: (ty + by) / 2,
+    dominantBaseline: "middle",
+    className: "fig-dim"
+  }, height, "cm"));
+}
+
+// 平行四辺形
+function ParallelogramFigure({
+  base,
+  height,
+  offset
+}) {
+  const SW = 320,
+    SH = 250,
+    PAD = 52;
+  const scale = Math.min((SW - PAD * 2 - offset * 1.5) / base, (SH - PAD * 2) / height);
+  const b = base * scale,
+    hh = height * scale,
+    off = offset * scale * 0.6;
+  const x0 = PAD,
+    y0 = SH - PAD;
+  const pts = `${x0},${y0} ${x0 + b},${y0} ${x0 + b + off},${y0 - hh} ${x0 + off},${y0 - hh}`;
+  return /*#__PURE__*/React.createElement("svg", {
+    width: SW,
+    height: SH
+  }, /*#__PURE__*/React.createElement("line", {
+    x1: x0 + b,
+    y1: y0,
+    x2: x0 + b,
+    y2: y0 - hh,
+    className: "fig-aux"
+  }), /*#__PURE__*/React.createElement("path", {
+    d: `M${x0 + b - 8},${y0 - 10} L${x0 + b - 8},${y0} L${x0 + b},${y0}`,
+    className: "fig-right-angle"
+  }), /*#__PURE__*/React.createElement("polygon", {
+    points: pts,
+    className: "fig-fill fig-stroke"
+  }), /*#__PURE__*/React.createElement("text", {
+    x: x0 + b / 2,
+    y: y0 + 20,
+    textAnchor: "middle",
+    className: "fig-dim"
+  }, base, "cm"), /*#__PURE__*/React.createElement("text", {
+    x: x0 + b + 14,
+    y: y0 - hh / 2,
+    dominantBaseline: "middle",
+    className: "fig-dim"
+  }, height, "cm"));
+}
+
+// 円
+function CircleFigure({
+  radius
+}) {
+  const SW = 300,
+    SH = 260;
+  const cx = SW / 2,
+    cy = SH / 2;
+  const r = Math.min(100, radius * 12);
+  return /*#__PURE__*/React.createElement("svg", {
+    width: SW,
+    height: SH
+  }, /*#__PURE__*/React.createElement("circle", {
+    cx: cx,
+    cy: cy,
+    r: r,
+    className: "fig-fill fig-stroke"
+  }), /*#__PURE__*/React.createElement("line", {
+    x1: cx,
+    y1: cy,
+    x2: cx + r,
+    y2: cy,
+    stroke: "#9333ea",
+    strokeWidth: "2"
+  }), /*#__PURE__*/React.createElement("circle", {
+    cx: cx,
+    cy: cy,
+    r: 4,
+    fill: "#9333ea"
+  }), /*#__PURE__*/React.createElement("text", {
+    x: cx + r / 2,
+    y: cy - 10,
+    textAnchor: "middle",
+    className: "fig-dim"
+  }, radius, "cm"));
+}
+
+// 角度（三角形の内角）
+function AngleFigure({
+  angleA,
+  angleB,
+  angleC,
+  unknown
+}) {
+  const SW = 300,
+    SH = 240;
+  const ax = 36,
+    ay = 196,
+    bx = 264,
+    by = 196,
+    cx = 116,
+    cy = 36;
+  const arcPath = (vx, vy, p1x, p1y, p2x, p2y, r = 26) => {
+    const a1 = Math.atan2(p1y - vy, p1x - vx);
+    const a2 = Math.atan2(p2y - vy, p2x - vx);
+    const sx = vx + r * Math.cos(a1),
+      sy = vy + r * Math.sin(a1);
+    const ex = vx + r * Math.cos(a2),
+      ey = vy + r * Math.sin(a2);
+    return `M${sx},${sy} A${r},${r} 0 0,1 ${ex},${ey}`;
+  };
+  const labelPos = (vx, vy, p1x, p1y, p2x, p2y, r = 46) => {
+    const a1 = Math.atan2(p1y - vy, p1x - vx),
+      a2 = Math.atan2(p2y - vy, p2x - vx);
+    const mid = (a1 + a2) / 2;
+    return {
+      x: vx + r * Math.cos(mid),
+      y: vy + r * Math.sin(mid)
+    };
+  };
+  const posA = labelPos(ax, ay, bx, by, cx, cy);
+  const posB = labelPos(bx, by, ax, ay, cx, cy);
+  const posC = labelPos(cx, cy, ax, ay, bx, by);
+  return /*#__PURE__*/React.createElement("svg", {
+    width: SW,
+    height: SH
+  }, /*#__PURE__*/React.createElement("polygon", {
+    points: `${ax},${ay} ${bx},${by} ${cx},${cy}`,
+    className: "fig-fill fig-stroke"
+  }), /*#__PURE__*/React.createElement("path", {
+    d: arcPath(ax, ay, bx, by, cx, cy),
+    className: "fig-angle"
+  }), /*#__PURE__*/React.createElement("text", {
+    x: posA.x,
+    y: posA.y,
+    textAnchor: "middle",
+    dominantBaseline: "middle",
+    className: "fig-angle-label"
+  }, unknown === "A" ? "？" : angleA + "°"), /*#__PURE__*/React.createElement("path", {
+    d: arcPath(bx, by, ax, ay, cx, cy),
+    className: "fig-angle"
+  }), /*#__PURE__*/React.createElement("text", {
+    x: posB.x,
+    y: posB.y,
+    textAnchor: "middle",
+    dominantBaseline: "middle",
+    className: "fig-angle-label"
+  }, unknown === "B" ? "？" : angleB + "°"), /*#__PURE__*/React.createElement("path", {
+    d: arcPath(cx, cy, ax, ay, bx, by),
+    className: "fig-angle"
+  }), /*#__PURE__*/React.createElement("text", {
+    x: posC.x,
+    y: posC.y,
+    textAnchor: "middle",
+    dominantBaseline: "middle",
+    className: "fig-angle-label"
+  }, unknown === "C" ? "？" : angleC + "°"));
+}
+
+// 台形
+function TrapezoidFigure({
+  top,
+  bottom,
+  height
+}) {
+  const SW = 320,
+    SH = 250,
+    PAD = 52;
+  const scale = Math.min((SW - PAD * 2) / bottom, (SH - PAD * 2) / height);
+  const bt = bottom * scale,
+    tp = top * scale,
+    hh = height * scale;
+  const bx = (SW - bt) / 2,
+    by = SH - PAD;
+  const tx = (SW - tp) / 2,
+    ty = by - hh;
+  const pts = `${bx},${by} ${bx + bt},${by} ${tx + tp},${ty} ${tx},${ty}`;
+  return /*#__PURE__*/React.createElement("svg", {
+    width: SW,
+    height: SH
+  }, /*#__PURE__*/React.createElement("line", {
+    x1: bx + bt,
+    y1: by,
+    x2: bx + bt,
+    y2: ty,
+    className: "fig-aux"
+  }), /*#__PURE__*/React.createElement("path", {
+    d: `M${bx + bt - 8},${by - 10} L${bx + bt - 8},${by} L${bx + bt},${by}`,
+    className: "fig-right-angle"
+  }), /*#__PURE__*/React.createElement("polygon", {
+    points: pts,
+    className: "fig-fill fig-stroke"
+  }), /*#__PURE__*/React.createElement("text", {
+    x: tx + tp / 2,
+    y: ty - 13,
+    textAnchor: "middle",
+    className: "fig-dim"
+  }, top, "cm"), /*#__PURE__*/React.createElement("text", {
+    x: bx + bt / 2,
+    y: by + 20,
+    textAnchor: "middle",
+    className: "fig-dim"
+  }, bottom, "cm"), /*#__PURE__*/React.createElement("text", {
+    x: bx + bt + 14,
+    y: (by + ty) / 2,
+    dominantBaseline: "middle",
+    className: "fig-dim"
+  }, height, "cm"));
+}
+
+// 相似な三角形（2つ並べる）
+function SimilarTriangleFigure({
+  ab,
+  bc,
+  de,
+  ef,
+  unknown
+}) {
+  // 左：△ABC（大）、右：△DEF（小）
+  const SW = 300,
+    SH = 220,
+    PAD = 20;
+  // 大きい三角形のスケール
+  const maxSide = Math.max(ab, bc);
+  const scaleL = Math.min(110 / maxSide, 80 / maxSide) * 1.1;
+  const lw = bc * scaleL,
+    lh = ab * scaleL * 0.8;
+  const lx = PAD + 10,
+    ly = SH - PAD - 10;
+  // 小さい三角形のスケール（比率を保つ）
+  const ratio = de / ab;
+  const sw2 = ef * scaleL,
+    sh2 = de * scaleL * 0.8;
+  const sx = SW / 2 + 10,
+    sy = SH - PAD - 10;
+  return /*#__PURE__*/React.createElement("svg", {
+    width: SW,
+    height: SH
+  }, /*#__PURE__*/React.createElement("polygon", {
+    points: `${lx},${ly} ${lx + lw},${ly} ${lx + lw * 0.3},${ly - lh}`,
+    className: "fig-fill fig-stroke"
+  }), /*#__PURE__*/React.createElement("text", {
+    x: lx - 8,
+    y: ly + 4,
+    textAnchor: "end",
+    className: "fig-dim"
+  }, "A"), /*#__PURE__*/React.createElement("text", {
+    x: lx + lw + 6,
+    y: ly + 4,
+    className: "fig-dim"
+  }, "B"), /*#__PURE__*/React.createElement("text", {
+    x: lx + lw * 0.3,
+    y: ly - lh - 8,
+    textAnchor: "middle",
+    className: "fig-dim"
+  }, "C"), /*#__PURE__*/React.createElement("text", {
+    x: lx + lw * 0.65,
+    y: ly - lh * 0.45,
+    textAnchor: "middle",
+    className: "fig-dim",
+    style: {
+      fontSize: "12px"
+    }
+  }, ab, "cm"), /*#__PURE__*/React.createElement("text", {
+    x: lx + lw / 2,
+    y: ly + 16,
+    textAnchor: "middle",
+    className: "fig-dim",
+    style: {
+      fontSize: "12px"
+    }
+  }, bc, "cm"), /*#__PURE__*/React.createElement("polygon", {
+    points: `${sx},${sy} ${sx + sw2},${sy} ${sx + sw2 * 0.3},${sy - sh2}`,
+    className: "fig-fill fig-stroke"
+  }), /*#__PURE__*/React.createElement("text", {
+    x: sx - 8,
+    y: sy + 4,
+    textAnchor: "end",
+    className: "fig-dim"
+  }, "D"), /*#__PURE__*/React.createElement("text", {
+    x: sx + sw2 + 6,
+    y: sy + 4,
+    className: "fig-dim"
+  }, "E"), /*#__PURE__*/React.createElement("text", {
+    x: sx + sw2 * 0.3,
+    y: sy - sh2 - 8,
+    textAnchor: "middle",
+    className: "fig-dim"
+  }, "F"), /*#__PURE__*/React.createElement("text", {
+    x: sx + sw2 * 0.65,
+    y: sy - sh2 * 0.45,
+    textAnchor: "middle",
+    style: {
+      fontSize: "12px",
+      fontWeight: "bold",
+      fill: unknown === "DE" ? "#dc2626" : "#7e22ce",
+      fontFamily: "'Hiragino Maru Gothic ProN',sans-serif"
+    }
+  }, unknown === "DE" ? "? cm" : `${de}cm`), /*#__PURE__*/React.createElement("text", {
+    x: sx + sw2 / 2,
+    y: sy + 16,
+    textAnchor: "middle",
+    style: {
+      fontSize: "12px",
+      fontWeight: "bold",
+      fill: unknown === "EF" ? "#dc2626" : "#7e22ce",
+      fontFamily: "'Hiragino Maru Gothic ProN',sans-serif"
+    }
+  }, unknown === "EF" ? "? cm" : `${ef}cm`), /*#__PURE__*/React.createElement("text", {
+    x: SW / 2,
+    y: SH / 2 - 20,
+    textAnchor: "middle",
+    style: {
+      fontSize: "18px",
+      fill: "#9333ea",
+      fontWeight: "900"
+    }
+  }, "\u223D"));
+}
+
+// X字型（交差する2つの三角形）
+function CrossTriangleFigure({
+  ab,
+  cd,
+  oa,
+  oc,
+  unknown
+}) {
+  const SW = 300,
+    SH = 260;
+  const ox = SW / 2,
+    oy = SH / 2 + 10;
+
+  // 2本の直線がOで交わる
+  // 直線1: A(左上) - O - D(右下)
+  // 直線2: B(右上) - O - C(左下)
+  const ax = ox - 72,
+    ay = oy - 80; // A: 左上
+  const dx = ox + 72,
+    dy = oy + 80; // D: 右下（AとOが一直線）
+  const bx = ox + 72,
+    by = oy - 80; // B: 右上
+  const cx = ox - 72,
+    cy = oy + 80; // C: 左下（BとOが一直線）
+
+  // 対頂角の弧（OのAB側とOのCD側）
+  const arcR = 18;
+  return /*#__PURE__*/React.createElement("svg", {
+    width: SW,
+    height: SH
+  }, /*#__PURE__*/React.createElement("polygon", {
+    points: `${ox},${oy} ${ax},${ay} ${bx},${by}`,
+    style: {
+      fill: "#f3e8ff"
+    }
+  }), /*#__PURE__*/React.createElement("polygon", {
+    points: `${ox},${oy} ${cx},${cy} ${dx},${dy}`,
+    style: {
+      fill: "#dbeafe"
+    }
+  }), /*#__PURE__*/React.createElement("line", {
+    x1: ax,
+    y1: ay,
+    x2: dx,
+    y2: dy,
+    style: {
+      stroke: "#9333ea",
+      strokeWidth: "2.5"
+    }
+  }), /*#__PURE__*/React.createElement("line", {
+    x1: bx,
+    y1: by,
+    x2: cx,
+    y2: cy,
+    style: {
+      stroke: "#9333ea",
+      strokeWidth: "2.5"
+    }
+  }), /*#__PURE__*/React.createElement("line", {
+    x1: ax,
+    y1: ay,
+    x2: bx,
+    y2: by,
+    style: {
+      stroke: "#9333ea",
+      strokeWidth: "2.5"
+    }
+  }), /*#__PURE__*/React.createElement("line", {
+    x1: cx,
+    y1: cy,
+    x2: dx,
+    y2: dy,
+    style: {
+      stroke: "#2563eb",
+      strokeWidth: "2.5"
+    }
+  }), /*#__PURE__*/React.createElement("path", {
+    d: `M${ox + arcR},${oy - 4} A${arcR},${arcR} 0 0,1 ${ox - arcR},${oy - 4}`,
+    style: {
+      fill: "none",
+      stroke: "#f59e0b",
+      strokeWidth: "1.8"
+    }
+  }), /*#__PURE__*/React.createElement("path", {
+    d: `M${ox - arcR},${oy + 4} A${arcR},${arcR} 0 0,1 ${ox + arcR},${oy + 4}`,
+    style: {
+      fill: "none",
+      stroke: "#f59e0b",
+      strokeWidth: "1.8"
+    }
+  }), /*#__PURE__*/React.createElement("text", {
+    x: ox + 26,
+    y: oy - 10,
+    style: {
+      fontSize: "10px",
+      fill: "#b45309",
+      fontWeight: "bold",
+      fontFamily: "'Hiragino Maru Gothic ProN',sans-serif"
+    }
+  }, "\u5BFE\u9802\u89D2"), /*#__PURE__*/React.createElement("text", {
+    x: ax - 10,
+    y: ay + 4,
+    textAnchor: "end",
+    className: "fig-dim"
+  }, "A"), /*#__PURE__*/React.createElement("text", {
+    x: bx + 10,
+    y: by + 4,
+    className: "fig-dim"
+  }, "B"), /*#__PURE__*/React.createElement("text", {
+    x: ox + 10,
+    y: oy - 6,
+    className: "fig-dim"
+  }, "O"), /*#__PURE__*/React.createElement("text", {
+    x: cx - 10,
+    y: cy + 4,
+    textAnchor: "end",
+    style: {
+      fontSize: "13px",
+      fontWeight: "bold",
+      fill: "#1d4ed8",
+      fontFamily: "'Hiragino Maru Gothic ProN',sans-serif"
+    }
+  }, "C"), /*#__PURE__*/React.createElement("text", {
+    x: dx + 10,
+    y: dy + 4,
+    style: {
+      fontSize: "13px",
+      fontWeight: "bold",
+      fill: "#1d4ed8",
+      fontFamily: "'Hiragino Maru Gothic ProN',sans-serif"
+    }
+  }, "D"), /*#__PURE__*/React.createElement("text", {
+    x: (ox + ax) / 2 - 14,
+    y: (oy + ay) / 2 + 4,
+    textAnchor: "middle",
+    className: "fig-dim",
+    style: {
+      fontSize: "12px"
+    }
+  }, oa, "cm"), /*#__PURE__*/React.createElement("text", {
+    x: (ox + cx) / 2 - 14,
+    y: (oy + cy) / 2,
+    textAnchor: "middle",
+    style: {
+      fontSize: "12px",
+      fontWeight: "bold",
+      fill: unknown === "OC" ? "#dc2626" : "#1d4ed8",
+      fontFamily: "'Hiragino Maru Gothic ProN',sans-serif"
+    }
+  }, unknown === "OC" ? "?cm" : `${oc}cm`), /*#__PURE__*/React.createElement("text", {
+    x: (ax + bx) / 2,
+    y: ay - 10,
+    textAnchor: "middle",
+    className: "fig-dim",
+    style: {
+      fontSize: "12px"
+    }
+  }, ab, "cm"), /*#__PURE__*/React.createElement("text", {
+    x: (cx + dx) / 2,
+    y: dy + 20,
+    textAnchor: "middle",
+    style: {
+      fontSize: "12px",
+      fontWeight: "bold",
+      fill: unknown === "CD" ? "#dc2626" : "#1d4ed8",
+      fontFamily: "'Hiragino Maru Gothic ProN',sans-serif"
+    }
+  }, unknown === "CD" ? "?cm" : `${cd}cm`));
+}
+
+// ─── 追加SVGコンポーネント ─────────────────────────────────
+
+// 多角形（n角形）の内角
+function PolygonFigure({
+  n
+}) {
+  const SW = 280,
+    SH = 260,
+    cx = SW / 2,
+    cy = SH / 2,
+    r = 95;
+  const pts = Array.from({
+    length: n
+  }, (_, i) => {
+    const a = i * 2 * Math.PI / n - Math.PI / 2;
+    return {
+      x: cx + r * Math.cos(a),
+      y: cy + r * Math.sin(a)
+    };
+  });
+  const labels = ["A", "B", "C", "D", "E", "F", "G", "H"];
+  return /*#__PURE__*/React.createElement("svg", {
+    width: SW,
+    height: SH
+  }, /*#__PURE__*/React.createElement("polygon", {
+    points: pts.map(p => `${p.x},${p.y}`).join(" "),
+    className: "fig-fill fig-stroke"
+  }), pts.map((p, i) => {
+    const dx = p.x - cx,
+      dy = p.y - cy;
+    const len = Math.sqrt(dx * dx + dy * dy);
+    return /*#__PURE__*/React.createElement("text", {
+      key: i,
+      x: p.x + dx / len * 14,
+      y: p.y + dy / len * 14,
+      textAnchor: "middle",
+      dominantBaseline: "middle",
+      className: "fig-dim",
+      style: {
+        fontSize: "13px"
+      }
+    }, labels[i]);
+  }), /*#__PURE__*/React.createElement("text", {
+    x: cx,
+    y: cy,
+    textAnchor: "middle",
+    dominantBaseline: "middle",
+    style: {
+      fontSize: "13px",
+      fill: "#9333ea",
+      fontWeight: "bold",
+      fontFamily: "'Hiragino Maru Gothic ProN',sans-serif"
+    }
+  }, n, "\u89D2\u5F62"));
+}
+
+// 平行線と角度
+function ParallelAngleFigure({
+  angleA,
+  angleType,
+  unknown
+}) {
+  const SW = 300,
+    SH = 200;
+  const y1 = 60,
+    y2 = 150;
+  // 2本の平行線
+  // 斜線が貫く
+  const lineAngle = 35 * Math.PI / 180;
+  const lx = 60,
+    rx = 240;
+  const tx1 = lx + (y2 - y1) * Math.tan(lineAngle) * 0.6;
+  const tx2 = lx + (y2 - y1) * Math.tan(lineAngle);
+  // 同位角: 上の線の左側 = 下の線の左側
+  // 錯角: 上の線の左側 = 下の線の右側
+  const isDoui = angleType === "同位角";
+  const unknownY = y2;
+  const unknownX = isDoui ? tx1 + 12 : rx - tx1 + lx + 12;
+  return /*#__PURE__*/React.createElement("svg", {
+    width: SW,
+    height: SH
+  }, /*#__PURE__*/React.createElement("line", {
+    x1: lx,
+    y1: y1,
+    x2: rx,
+    y2: y1,
+    style: {
+      stroke: "#9333ea",
+      strokeWidth: "2.5"
+    }
+  }), /*#__PURE__*/React.createElement("line", {
+    x1: lx,
+    y1: y2,
+    x2: rx,
+    y2: y2,
+    style: {
+      stroke: "#9333ea",
+      strokeWidth: "2.5"
+    }
+  }), /*#__PURE__*/React.createElement("line", {
+    x1: lx + 70,
+    y1: y1 - 6,
+    x2: lx + 80,
+    y2: y1 + 6,
+    style: {
+      stroke: "#9333ea",
+      strokeWidth: "2"
+    }
+  }), /*#__PURE__*/React.createElement("line", {
+    x1: lx + 80,
+    y1: y1 - 6,
+    x2: lx + 90,
+    y2: y1 + 6,
+    style: {
+      stroke: "#9333ea",
+      strokeWidth: "2"
+    }
+  }), /*#__PURE__*/React.createElement("line", {
+    x1: lx + 70,
+    y1: y2 - 6,
+    x2: lx + 80,
+    y2: y2 + 6,
+    style: {
+      stroke: "#9333ea",
+      strokeWidth: "2"
+    }
+  }), /*#__PURE__*/React.createElement("line", {
+    x1: lx + 80,
+    y1: y2 - 6,
+    x2: lx + 90,
+    y2: y2 + 6,
+    style: {
+      stroke: "#9333ea",
+      strokeWidth: "2"
+    }
+  }), /*#__PURE__*/React.createElement("line", {
+    x1: lx + 20,
+    y1: y1 + (y1 - y2) * 0.4,
+    x2: tx2 + 30,
+    y2: y2 + (y2 - y1) * 0.4,
+    style: {
+      stroke: "#374151",
+      strokeWidth: "2.5"
+    }
+  }), /*#__PURE__*/React.createElement("text", {
+    x: tx1 - 10,
+    y: y1 + 28,
+    textAnchor: "middle",
+    style: {
+      fontSize: "13px",
+      fontWeight: "bold",
+      fill: "#b45309",
+      fontFamily: "'Hiragino Maru Gothic ProN',sans-serif"
+    }
+  }, angleA, "\xB0"), /*#__PURE__*/React.createElement("text", {
+    x: isDoui ? tx1 - 10 : tx2 + 20,
+    y: y2 - 14,
+    textAnchor: "middle",
+    style: {
+      fontSize: "14px",
+      fontWeight: "900",
+      fill: "#dc2626",
+      fontFamily: "'Hiragino Maru Gothic ProN',sans-serif"
+    }
+  }, "?\xB0"), /*#__PURE__*/React.createElement("text", {
+    x: SW - 30,
+    y: y1 + 4,
+    style: {
+      fontSize: "12px",
+      fill: "#6b7280",
+      fontFamily: "'Hiragino Maru Gothic ProN',sans-serif"
+    }
+  }, "\u2113"), /*#__PURE__*/React.createElement("text", {
+    x: SW - 30,
+    y: y2 + 4,
+    style: {
+      fontSize: "12px",
+      fill: "#6b7280",
+      fontFamily: "'Hiragino Maru Gothic ProN',sans-serif"
+    }
+  }, "m"), /*#__PURE__*/React.createElement("text", {
+    x: SW / 2,
+    y: SH - 10,
+    textAnchor: "middle",
+    style: {
+      fontSize: "11px",
+      fill: "#8b5cf6",
+      fontWeight: "bold",
+      fontFamily: "'Hiragino Maru Gothic ProN',sans-serif"
+    }
+  }, angleType));
+}
+
+// 直方体
+function CuboidFigure({
+  l,
+  w,
+  h
+}) {
+  const SW = 300,
+    SH = 240;
+  // 等角投影風
+  const ox = 70,
+    oy = 170;
+  const sx = 110,
+    sy = 0,
+    sz = 90; // x,y,z方向の長さ（ピクセル）
+  const scaleX = Math.min(sx / l, sy + sz),
+    dx = l / l * sx,
+    dy = w / w * sz,
+    dz = h / h * sz;
+  const sc = Math.min(sx / Math.max(l, 1), sz / Math.max(w, h));
+  const px = l * sc * 1.0,
+    py = w * sc * 0.5,
+    pz = h * sc * 0.9;
+  // 8頂点
+  const P = (x, y, z) => ({
+    x: ox + x * 1.0 - y * 0.5,
+    y: oy - z * 0.9 - y * 0.4
+  });
+  const v = [P(0, 0, 0), P(px, 0, 0), P(px, py, 0), P(0, py, 0), P(0, 0, pz), P(px, 0, pz), P(px, py, pz), P(0, py, pz)];
+  const faces = [[4, 5, 6, 7, "#f3e8ff", "#9333ea"],
+  // 上面
+  [0, 1, 5, 4, "#e9d5ff", "#9333ea"],
+  // 前面
+  [1, 2, 6, 5, "#ddd6fe", "#7c3aed"] // 右面
+  ];
+  const pt = pts => pts.map(i => `${v[i].x},${v[i].y}`).join(" ");
+  return /*#__PURE__*/React.createElement("svg", {
+    width: SW,
+    height: SH
+  }, [[0, 3], [3, 2], [3, 7]].map(([a, b], i) => /*#__PURE__*/React.createElement("line", {
+    key: i,
+    x1: v[a].x,
+    y1: v[a].y,
+    x2: v[b].x,
+    y2: v[b].y,
+    style: {
+      stroke: "#9ca3af",
+      strokeWidth: "1.5",
+      strokeDasharray: "5,4"
+    }
+  })), faces.map(([a, b, c, d, fill, stroke], i) => /*#__PURE__*/React.createElement("polygon", {
+    key: i,
+    points: pt([a, b, c, d]),
+    style: {
+      fill,
+      stroke,
+      strokeWidth: "2",
+      strokeLinejoin: "round"
+    }
+  })), /*#__PURE__*/React.createElement("text", {
+    x: (v[0].x + v[1].x) / 2,
+    y: v[0].y + 18,
+    textAnchor: "middle",
+    className: "fig-dim"
+  }, l, "cm"), /*#__PURE__*/React.createElement("text", {
+    x: v[1].x + 12,
+    y: (v[1].y + v[2].y) / 2,
+    className: "fig-dim"
+  }, w, "cm"), /*#__PURE__*/React.createElement("text", {
+    x: v[5].x + 12,
+    y: (v[5].y + v[1].y) / 2,
+    className: "fig-dim"
+  }, h, "cm"));
+}
+
+// 円柱
+function CylinderFigure({
+  r,
+  h
+}) {
+  const SW = 260,
+    SH = 250;
+  const cx = SW / 2,
+    rx = 70,
+    ry = 20;
+  const topY = 40,
+    botY = topY + h * 12;
+  const clampedBotY = Math.min(botY, SH - 30);
+  const hPx = clampedBotY - topY;
+  return /*#__PURE__*/React.createElement("svg", {
+    width: SW,
+    height: SH
+  }, /*#__PURE__*/React.createElement("path", {
+    d: `M${cx - rx},${clampedBotY} A${rx},${ry} 0 0,0 ${cx + rx},${clampedBotY}`,
+    style: {
+      fill: "#e9d5ff",
+      stroke: "#9333ea",
+      strokeWidth: "2"
+    }
+  }), /*#__PURE__*/React.createElement("rect", {
+    x: cx - rx,
+    y: topY,
+    width: rx * 2,
+    height: hPx,
+    style: {
+      fill: "#f3e8ff",
+      stroke: "none"
+    }
+  }), /*#__PURE__*/React.createElement("line", {
+    x1: cx - rx,
+    y1: topY,
+    x2: cx - rx,
+    y2: clampedBotY,
+    style: {
+      stroke: "#9333ea",
+      strokeWidth: "2"
+    }
+  }), /*#__PURE__*/React.createElement("line", {
+    x1: cx + rx,
+    y1: topY,
+    x2: cx + rx,
+    y2: clampedBotY,
+    style: {
+      stroke: "#9333ea",
+      strokeWidth: "2"
+    }
+  }), /*#__PURE__*/React.createElement("path", {
+    d: `M${cx - rx},${clampedBotY} A${rx},${ry} 0 0,1 ${cx + rx},${clampedBotY}`,
+    style: {
+      fill: "#e9d5ff",
+      stroke: "#9333ea",
+      strokeWidth: "2"
+    }
+  }), /*#__PURE__*/React.createElement("ellipse", {
+    cx: cx,
+    cy: topY,
+    rx: rx,
+    ry: ry,
+    style: {
+      fill: "#f3e8ff",
+      stroke: "#9333ea",
+      strokeWidth: "2"
+    }
+  }), /*#__PURE__*/React.createElement("line", {
+    x1: cx,
+    y1: topY,
+    x2: cx + rx,
+    y2: topY,
+    style: {
+      stroke: "#7c3aed",
+      strokeWidth: "1.8"
+    }
+  }), /*#__PURE__*/React.createElement("circle", {
+    cx: cx,
+    cy: topY,
+    r: 3,
+    fill: "#9333ea"
+  }), /*#__PURE__*/React.createElement("text", {
+    x: cx + rx / 2,
+    y: topY - 10,
+    textAnchor: "middle",
+    className: "fig-dim"
+  }, r, "cm"), /*#__PURE__*/React.createElement("text", {
+    x: cx + rx + 14,
+    y: (topY + clampedBotY) / 2,
+    dominantBaseline: "middle",
+    className: "fig-dim"
+  }, h, "cm"));
+}
+
+// おうぎ形
+function SectorFigure({
+  r,
+  deg
+}) {
+  const SW = 280,
+    SH = 260,
+    cx = 100,
+    cy = 200;
+  const rpx = Math.min(150, r * 18);
+  const rad = deg * Math.PI / 180;
+  const ex = cx + rpx * Math.cos(-rad);
+  const ey = cy + rpx * Math.sin(-rad);
+  const large = deg > 180 ? 1 : 0;
+  return /*#__PURE__*/React.createElement("svg", {
+    width: SW,
+    height: SH
+  }, /*#__PURE__*/React.createElement("path", {
+    d: `M${cx},${cy} L${cx + rpx},${cy} A${rpx},${rpx} 0 ${large},0 ${ex},${ey} Z`,
+    className: "fig-fill fig-stroke"
+  }), /*#__PURE__*/React.createElement("text", {
+    x: cx + rpx / 2 + 4,
+    y: cy + 18,
+    textAnchor: "middle",
+    className: "fig-dim"
+  }, r, "cm"), /*#__PURE__*/React.createElement("path", {
+    d: `M${cx + 28},${cy} A28,28 0 ${large},0 ${cx + 28 * Math.cos(-rad)},${cy + 28 * Math.sin(-rad)}`,
+    className: "fig-angle"
+  }), /*#__PURE__*/React.createElement("text", {
+    x: cx + 48,
+    y: cy - 16,
+    textAnchor: "middle",
+    className: "fig-angle-label"
+  }, deg, "\xB0"));
+}
+
+// 拡大縮小図（長方形）
+function ScaleFigure({
+  w,
+  h,
+  scale,
+  isEnlarge
+}) {
+  const SW = 300,
+    SH = 220,
+    PAD = 40;
+  const w2 = Math.round(w * scale),
+    h2 = Math.round(h * scale);
+  const scPx = Math.min((SW - PAD * 3) / (w + w2), (SH - PAD * 2) / Math.max(h, h2));
+  const rw1 = w * scPx,
+    rh1 = h * scPx,
+    rw2 = w2 * scPx,
+    rh2 = h2 * scPx;
+  const x1 = PAD,
+    y1 = (SH - rh1) / 2;
+  const x2 = x1 + rw1 + PAD,
+    y2 = (SH - rh2) / 2;
+  return /*#__PURE__*/React.createElement("svg", {
+    width: SW,
+    height: SH
+  }, /*#__PURE__*/React.createElement("rect", {
+    x: x1,
+    y: y1,
+    width: rw1,
+    height: rh1,
+    className: "fig-fill fig-stroke"
+  }), /*#__PURE__*/React.createElement("text", {
+    x: x1 + rw1 / 2,
+    y: y1 - 12,
+    textAnchor: "middle",
+    className: "fig-dim"
+  }, w, "cm"), /*#__PURE__*/React.createElement("text", {
+    x: x1 - 10,
+    y: y1 + rh1 / 2,
+    textAnchor: "end",
+    dominantBaseline: "middle",
+    className: "fig-dim"
+  }, h, "cm"), /*#__PURE__*/React.createElement("text", {
+    x: x1 + rw1 / 2,
+    y: y1 + rh1 + 16,
+    textAnchor: "middle",
+    style: {
+      fontSize: "11px",
+      fill: "#6b7280",
+      fontFamily: "'Hiragino Maru Gothic ProN',sans-serif"
+    }
+  }, "\u5143\u306E\u56F3"), /*#__PURE__*/React.createElement("text", {
+    x: x2 - PAD / 2,
+    y: SH / 2 + 4,
+    textAnchor: "middle",
+    style: {
+      fontSize: "18px",
+      fill: "#9333ea"
+    }
+  }, "\u2192"), /*#__PURE__*/React.createElement("text", {
+    x: x2 - PAD / 2,
+    y: SH / 2 + 18,
+    textAnchor: "middle",
+    style: {
+      fontSize: "10px",
+      fill: "#7c3aed",
+      fontWeight: "bold",
+      fontFamily: "'Hiragino Maru Gothic ProN',sans-serif"
+    }
+  }, scale, "\u500D"), /*#__PURE__*/React.createElement("rect", {
+    x: x2,
+    y: y2,
+    width: rw2,
+    height: rh2,
+    style: {
+      fill: "#dbeafe",
+      stroke: "#2563eb",
+      strokeWidth: "2.5"
+    }
+  }), /*#__PURE__*/React.createElement("text", {
+    x: x2 + rw2 / 2,
+    y: y2 - 12,
+    textAnchor: "middle",
+    style: {
+      fontSize: "13px",
+      fontWeight: "bold",
+      fill: "#1d4ed8",
+      fontFamily: "'Hiragino Maru Gothic ProN',sans-serif"
+    }
+  }, "?cm"), /*#__PURE__*/React.createElement("text", {
+    x: x2 - 10,
+    y: y2 + rh2 / 2,
+    textAnchor: "end",
+    dominantBaseline: "middle",
+    style: {
+      fontSize: "13px",
+      fontWeight: "bold",
+      fill: "#1d4ed8",
+      fontFamily: "'Hiragino Maru Gothic ProN',sans-serif"
+    }
+  }, h2, "cm"), /*#__PURE__*/React.createElement("text", {
+    x: x2 + rw2 / 2,
+    y: y2 + rh2 + 16,
+    textAnchor: "middle",
+    style: {
+      fontSize: "11px",
+      fill: "#2563eb",
+      fontFamily: "'Hiragino Maru Gothic ProN',sans-serif"
+    }
+  }, isEnlarge ? "拡大図" : "縮小図"));
+}
+
+// ─── 問題生成 ──────────────────────────────────────────────
+// 難易度別タイプ定義
+const TYPES_EASY = [0, 1, 2, 3, 4, 5, 10, 12]; // 小5：基本面積・角度・直方体体積・円周
+const TYPES_HARD = [3, 4, 6, 7, 8, 9, 11, 13, 14, 15]; // 小6：台形・円・相似・多角形・円柱・おうぎ形・表面積・拡大縮小
+const TYPES_ALL = Array.from({
+  length: 16
+}, (_, i) => i);
+function genProblem(diff = "mix") {
+  const pool = diff === "easy" ? TYPES_EASY : diff === "hard" ? TYPES_HARD : TYPES_ALL;
+  const type = pool[Math.floor(Math.random() * pool.length)];
+  if (type === 0) {
+    // 長方形の面積
+    const w = randInt(3, 15),
+      h = randInt(3, 12);
+    const ans = w * h;
+    return {
+      title: "面積①（長方形）",
+      color: "#a855f7",
+      text: `下の長方形の面積を求めなさい。`,
+      figure: /*#__PURE__*/React.createElement(RectFigure, {
+        w: w,
+        h: h
+      }),
+      answers: [{
+        label: "面積",
+        value: ans,
+        unit: "cm²"
+      }],
+      hints: ["🔑 長方形の面積の公式を使おう！", "面積 ＝ たて × よこ", `面積 ＝ ${h} × ${w} ＝ ${ans}cm² ✅`]
+    };
+  }
+  if (type === 1) {
+    // 三角形の面積
+    const base = randInt(4, 16) * 2,
+      height = randInt(3, 10) * 2;
+    const ans = base * height / 2;
+    return {
+      title: "面積②（三角形）",
+      color: "#3b82f6",
+      text: `下の三角形の面積を求めなさい。`,
+      figure: /*#__PURE__*/React.createElement(TriangleFigure, {
+        base: base,
+        height: height
+      }),
+      answers: [{
+        label: "面積",
+        value: ans,
+        unit: "cm²"
+      }],
+      hints: ["🔑 三角形の面積の公式を使おう！", "面積 ＝ 底辺 × 高さ ÷ 2", `面積 ＝ ${base} × ${height} ÷ 2 ＝ ${ans}cm² ✅`]
+    };
+  }
+  if (type === 2) {
+    // 平行四辺形の面積
+    const base = randInt(4, 14),
+      height = randInt(3, 10),
+      offset = randInt(2, 5);
+    const ans = base * height;
+    return {
+      title: "面積③（平行四辺形）",
+      color: "#22c55e",
+      text: `下の平行四辺形の面積を求めなさい。`,
+      figure: /*#__PURE__*/React.createElement(ParallelogramFigure, {
+        base: base,
+        height: height,
+        offset: offset
+      }),
+      answers: [{
+        label: "面積",
+        value: ans,
+        unit: "cm²"
+      }],
+      hints: ["🔑 平行四辺形の面積の公式を使おう！", "面積 ＝ 底辺 × 高さ", `面積 ＝ ${base} × ${height} ＝ ${ans}cm² ✅`]
+    };
+  }
+  if (type === 3) {
+    // 台形の面積
+    const top = randInt(3, 9) * 2,
+      bottom = randInt(top / 2 + 2, top + 6) * 2,
+      height = randInt(3, 9) * 2;
+    const ans = (top + bottom) * height / 2;
+    return {
+      title: "面積④（台形）",
+      color: "#f59e0b",
+      text: `下の台形の面積を求めなさい。`,
+      figure: /*#__PURE__*/React.createElement(TrapezoidFigure, {
+        top: top,
+        bottom: bottom,
+        height: height
+      }),
+      answers: [{
+        label: "面積",
+        value: ans,
+        unit: "cm²"
+      }],
+      hints: ["🔑 台形の面積の公式を使おう！", "面積 ＝ (上底 ＋ 下底) × 高さ ÷ 2", `面積 ＝ (${top} ＋ ${bottom}) × ${height} ÷ 2`, `＝ ${top + bottom} × ${height} ÷ 2 ＝ ${ans}cm² ✅`]
+    };
+  }
+  if (type === 4) {
+    // 円の面積
+    const r = randInt(2, 8);
+    const ans = r * r * 3.14;
+    return {
+      title: "面積⑤（円）",
+      color: "#ec4899",
+      text: `下の円の面積を求めなさい。\n（円周率は3.14を使うこと）`,
+      figure: /*#__PURE__*/React.createElement(CircleFigure, {
+        radius: r
+      }),
+      answers: [{
+        label: "面積",
+        value: ans,
+        unit: "cm²"
+      }],
+      hints: ["🔑 円の面積の公式を使おう！", "面積 ＝ 半径 × 半径 × 3.14", `面積 ＝ ${r} × ${r} × 3.14`, `＝ ${r * r} × 3.14 ＝ ${ans}cm² ✅`]
+    };
+  }
+
+  // 三角形の内角
+  if (type === 5) {
+    const a = randInt(30, 80),
+      b = randInt(30, 80);
+    if (a + b >= 180) return genProblem();
+    const c = 180 - a - b;
+    const unknownKey = ["A", "B", "C"][randInt(0, 2)];
+    const unknownVal = unknownKey === "A" ? a : unknownKey === "B" ? b : c;
+    return {
+      title: "角度（三角形）",
+      color: "#f97316",
+      text: `三角形の内角の合計は180°です。\n？の角度を求めなさい。`,
+      figure: /*#__PURE__*/React.createElement(AngleFigure, {
+        angleA: a,
+        angleB: b,
+        angleC: c,
+        unknown: unknownKey
+      }),
+      answers: [{
+        label: "？の角度",
+        value: unknownVal,
+        unit: "°"
+      }],
+      hints: ["🔑 三角形の内角の和は180°！", `わかっている角度を全部たすと…\n${unknownKey === "A" ? `${b}＋${c}` : unknownKey === "B" ? `${a}＋${c}` : `${a}＋${b}`} ＝ ${unknownKey === "A" ? b + c : unknownKey === "B" ? a + c : a + b}°`, `？＝ 180 − ${unknownKey === "A" ? b + c : unknownKey === "B" ? a + c : a + b} ＝ ${unknownVal}° ✅`]
+    };
+  }
+  if (type === 6) {
+    // 相似な三角形（2つ並べ）- 辺の長さを求める
+    const ab = randInt(3, 9);
+    const n = randInt(2, 4); // 相似比の分母
+    const m = randInt(n + 1, n + 3); // 相似比の分子（ab:de = m:n）
+    const de = Math.round(ab * n / m * 10) / 10;
+    if (!Number.isInteger(de) && de * 10 % 1 !== 0) return genProblem();
+    const bc = randInt(4, 12);
+    const ef = Math.round(bc * n / m * 10) / 10;
+    if (!Number.isInteger(ef)) return genProblem();
+    // どの辺を?にするか
+    const unknownSide = Math.random() < 0.5 ? "EF" : "DE";
+    const unknownVal = unknownSide === "EF" ? ef : de;
+    const knownSides = unknownSide === "EF" ? `AB＝${ab}cm、BC＝${bc}cm、DE＝${de}cm` : `AB＝${ab}cm、BC＝${bc}cm、EF＝${ef}cm`;
+    return {
+      title: "相似な図形",
+      color: "#8b5cf6",
+      text: `△ABC ∽ △DEF です。\n${knownSides}\n${unknownSide}の長さを求めなさい。`,
+      figure: /*#__PURE__*/React.createElement(SimilarTriangleFigure, {
+        ab: ab,
+        bc: bc,
+        de: de,
+        ef: ef,
+        unknown: unknownSide
+      }),
+      answers: [{
+        label: unknownSide,
+        value: unknownVal,
+        unit: "cm"
+      }],
+      hints: ["🔑 相似な図形は対応する辺の比が等しい！", `相似比 ＝ AB : DE ＝ ${ab} : ${de}`, unknownSide === "EF" ? `BC : EF ＝ ${ab} : ${de} と同じ比になるよ\n${bc} : EF ＝ ${ab} : ${de}` : `AB : DE ＝ ${ab} : ${de} と同じ比になるよ\nBC : EF ＝ ${bc} : ${ef}`, `${unknownSide} ＝ ${unknownSide === "EF" ? `${bc} × ${de} ÷ ${ab} ＝ ${ef}cm` : `${ab} × ${ef} ÷ ${bc} ＝ ${de}cm`} ✅`]
+    };
+  }
+
+  // type === 7: X字型相似（対頂角で相似）
+  if (type === 7) {
+    const oa = randInt(3, 8);
+    const ratio = randInt(2, 4);
+    const oc = oa * ratio;
+    const ab = randInt(4, 10);
+    const cd = ab * ratio;
+    const unknownX = Math.random() < 0.5 ? "CD" : "OC";
+    const unknownVal = unknownX === "CD" ? cd : oc;
+    return {
+      title: "相似（X字型）",
+      color: "#2563eb",
+      text: `右の図で、直線が点Oで交わっています。\n△OAB ∽ △OCDです。\nOA＝${oa}cm、OC＝${unknownX === "OC" ? "?" : oc + "cm"}\nAB＝${ab}cm、CD＝${unknownX === "CD" ? "?" : cd + "cm"}\n${unknownX}の長さを求めなさい。`,
+      figure: /*#__PURE__*/React.createElement(CrossTriangleFigure, {
+        ab: ab,
+        cd: cd,
+        oa: oa,
+        oc: oc,
+        unknown: unknownX
+      }),
+      answers: [{
+        label: unknownX,
+        value: unknownVal,
+        unit: "cm"
+      }],
+      hints: ["🔑 直線が交わると対頂角が等しくなる！\nだから△OAB ∽ △OCD（AA相似）", `相似比 ＝ OA : OC ＝ ${oa} : ${oc} ＝ 1 : ${ratio}`, unknownX === "CD" ? `AB : CD ＝ ${oa} : ${oc}\n${ab} : CD ＝ 1 : ${ratio}` : `OA : OC ＝ 1 : ${ratio}\n${oa} : OC ＝ 1 : ${ratio}`, `${unknownX} ＝ ${unknownX === "CD" ? `${ab} × ${ratio} ＝ ${cd}cm` : `${oa} × ${ratio} ＝ ${oc}cm`} ✅`]
+    };
+  }
+
+  // type === 8: 多角形の内角の和
+  if (type === 8) {
+    const n = randInt(4, 8);
+    const total = (n - 2) * 180;
+    const knownAngles = Array.from({
+      length: n - 1
+    }, () => randInt(80, 160));
+    const knownSum = knownAngles.reduce((a, b) => a + b, 0);
+    const unknown = total - knownSum;
+    if (unknown <= 0 || unknown >= 360) return genProblem();
+    return {
+      title: `角度（${n}角形）`,
+      color: "#f97316",
+      text: `${n}角形の内角の和は${total}°です。\n残りの1つの角度（？）を求めなさい。\nわかっている角度：\n${knownAngles.map((a, i) => `角${i + 1}＝${a}°`).join("、")}`,
+      figure: /*#__PURE__*/React.createElement(PolygonFigure, {
+        n: n
+      }),
+      answers: [{
+        label: "？の角度",
+        value: unknown,
+        unit: "°"
+      }],
+      hints: [`🔑 ${n}角形の内角の和 ＝ (${n}−2) × 180°`, `＝ ${n - 2} × 180 ＝ ${total}°`, `わかっている角度の合計：\n${knownAngles.join("＋")} ＝ ${knownSum}°`, `？＝ ${total} − ${knownSum} ＝ ${unknown}° ✅`]
+    };
+  }
+
+  // type === 9: 平行線と同位角・錯角
+  if (type === 9) {
+    const angleA = randInt(30, 150);
+    const angleType = Math.random() < 0.5 ? "同位角" : "錯角";
+    const unknown = angleA; // 同位角も錯角も等しい
+    return {
+      title: `平行線と${angleType}`,
+      color: "#0ea5e9",
+      text: `ℓ ∥ m（ℓとmは平行）のとき、\n${angleType}は等しいので\n？の角度を求めなさい。`,
+      figure: /*#__PURE__*/React.createElement(ParallelAngleFigure, {
+        angleA: angleA,
+        angleType: angleType,
+        unknown: unknown
+      }),
+      answers: [{
+        label: "？",
+        value: unknown,
+        unit: "°"
+      }],
+      hints: [`🔑 平行な2直線を直線が横切るとき\n${angleType}は等しくなる！`, `ℓ ∥ m なので ${angleType}は等しい`, `？＝ ${angleA}° ✅`]
+    };
+  }
+
+  // type === 10: 直方体の体積
+  if (type === 10) {
+    const l = randInt(3, 12),
+      w = randInt(2, 8),
+      h = randInt(2, 8);
+    const ans = l * w * h;
+    return {
+      title: "体積（直方体）",
+      color: "#10b981",
+      text: `下の直方体の体積を求めなさい。`,
+      figure: /*#__PURE__*/React.createElement(CuboidFigure, {
+        l: l,
+        w: w,
+        h: h
+      }),
+      answers: [{
+        label: "体積",
+        value: ans,
+        unit: "cm³"
+      }],
+      hints: ["🔑 直方体の体積の公式を使おう！", "体積 ＝ たて × よこ × 高さ", `体積 ＝ ${l} × ${w} × ${h}`, `＝ ${l * w} × ${h} ＝ ${ans}cm³ ✅`]
+    };
+  }
+
+  // type === 11: 円柱の体積
+  if (type === 11) {
+    const r = randInt(2, 7),
+      h = randInt(3, 10);
+    const ans = Math.round(r * r * 3.14 * h * 100) / 100;
+    return {
+      title: "体積（円柱）",
+      color: "#06b6d4",
+      text: `下の円柱の体積を求めなさい。\n（円周率は3.14を使うこと）`,
+      figure: /*#__PURE__*/React.createElement(CylinderFigure, {
+        r: r,
+        h: h
+      }),
+      answers: [{
+        label: "体積",
+        value: ans,
+        unit: "cm³"
+      }],
+      hints: ["🔑 円柱の体積の公式を使おう！", "体積 ＝ 底面積 × 高さ", `底面積 ＝ 半径 × 半径 × 3.14 ＝ ${r} × ${r} × 3.14 ＝ ${Math.round(r * r * 3.14 * 100) / 100}cm²`, `体積 ＝ ${Math.round(r * r * 3.14 * 100) / 100} × ${h} ＝ ${ans}cm³ ✅`]
+    };
+  }
+
+  // type === 12: 円周の長さ
+  if (type === 12) {
+    const r = randInt(2, 9);
+    const ans = Math.round(2 * r * 3.14 * 100) / 100;
+    return {
+      title: "円周の長さ",
+      color: "#ec4899",
+      text: `下の円の円周の長さを求めなさい。\n（円周率は3.14を使うこと）`,
+      figure: /*#__PURE__*/React.createElement(CircleFigure, {
+        radius: r
+      }),
+      answers: [{
+        label: "円周",
+        value: ans,
+        unit: "cm"
+      }],
+      hints: ["🔑 円周の長さの公式を使おう！", "円周 ＝ 直径 × 3.14 ＝ 半径 × 2 × 3.14", `円周 ＝ ${r} × 2 × 3.14`, `＝ ${r * 2} × 3.14 ＝ ${ans}cm ✅`]
+    };
+  }
+
+  // type === 13: おうぎ形の弧の長さ
+  if (type === 13) {
+    const r = randInt(3, 9);
+    const deg = [60, 90, 120, 180, 270][randInt(0, 4)];
+    const arcLen = Math.round(2 * r * 3.14 * (deg / 360) * 100) / 100;
+    const area = Math.round(r * r * 3.14 * (deg / 360) * 100) / 100;
+    const askArc = Math.random() < 0.5;
+    const ans = askArc ? arcLen : area;
+    return {
+      title: `おうぎ形（${deg}°）`,
+      color: "#a855f7",
+      text: `半径${r}cm、中心角${deg}°のおうぎ形の\n${askArc ? "弧の長さ" : "面積"}を求めなさい。\n（円周率は3.14を使うこと）`,
+      figure: /*#__PURE__*/React.createElement(SectorFigure, {
+        r: r,
+        deg: deg
+      }),
+      answers: [{
+        label: askArc ? "弧の長さ" : "面積",
+        value: ans,
+        unit: askArc ? "cm" : "cm²"
+      }],
+      hints: [`🔑 おうぎ形は円の ${deg}/360 の部分！`, askArc ? `弧の長さ ＝ 円周 × ${deg}/360` : `面積 ＝ 円の面積 × ${deg}/360`, askArc ? `＝ 2 × ${r} × 3.14 × ${deg}/360` : `＝ ${r} × ${r} × 3.14 × ${deg}/360`, `＝ ${ans}${askArc ? "cm" : "cm²"} ✅`]
+    };
+  }
+
+  // type === 14: 直方体の表面積
+  if (type === 14) {
+    const l = randInt(3, 10),
+      w = randInt(2, 7),
+      h = randInt(2, 7);
+    const ans = 2 * (l * w + w * h + h * l);
+    return {
+      title: "表面積（直方体）",
+      color: "#f59e0b",
+      text: `下の直方体の表面積を求めなさい。`,
+      figure: /*#__PURE__*/React.createElement(CuboidFigure, {
+        l: l,
+        w: w,
+        h: h
+      }),
+      answers: [{
+        label: "表面積",
+        value: ans,
+        unit: "cm²"
+      }],
+      hints: ["🔑 直方体の面は6面（3種類×2）", `上下面：${l}×${w}＝${l * w}cm²（2枚）`, `前後面：${l}×${h}＝${l * h}cm²（2枚）`, `左右面：${w}×${h}＝${w * h}cm²（2枚）`, `表面積 ＝ 2×(${l * w}＋${l * h}＋${w * h}) ＝ ${ans}cm² ✅`]
+    };
+  }
+
+  // type === 15: 拡大図・縮小図
+  const w = randInt(3, 8),
+    h = randInt(2, 6);
+  const scales = [2, 3, 4];
+  const scale = scales[randInt(0, 2)];
+  const isEnlarge = Math.random() < 0.5;
+  const actualScale = isEnlarge ? scale : 1 / scale;
+  const w2 = Math.round(w * actualScale);
+  const h2 = Math.round(h * actualScale);
+  if (w2 <= 0 || h2 <= 0) return genProblem();
+  return {
+    title: isEnlarge ? "拡大図" : "縮小図",
+    color: "#6366f1",
+    text: `元の図形を${isEnlarge ? scale + "倍に拡大" : "1/" + scale + "に縮小"}した図を作ります。\n元のよこ：${w}cm\n？（${isEnlarge ? "拡大" : "縮小"}後のよこ）を求めなさい。`,
+    figure: /*#__PURE__*/React.createElement(ScaleFigure, {
+      w: w,
+      h: h,
+      scale: isEnlarge ? scale : 1 / scale,
+      isEnlarge: isEnlarge
+    }),
+    answers: [{
+      label: isEnlarge ? "拡大後のよこ" : "縮小後のよこ",
+      value: w2,
+      unit: "cm"
+    }],
+    hints: [`🔑 ${isEnlarge ? "拡大" : "縮小"}図はすべての辺が${isEnlarge ? scale + "倍" : "1/" + scale}になる！`, `よこ ＝ ${w} × ${isEnlarge ? scale : "1/" + scale}`, `＝ ${w2}cm ✅`]
+  };
+}
+
+// ─── 途中式表示 ────────────────────────────────────────────
+function ScratchDisplay({
+  scratch,
+  focused
+}) {
+  if (!scratch) return /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement("span", {
+    className: "scratch-placeholder"
+  }, "\u3053\u3053\u3092\u30BF\u30C3\u30C1\u3057\u3066\u5F0F\u3092\u5165\u529B\u2026"), focused && /*#__PURE__*/React.createElement("span", {
+    className: "cursor-blink"
+  }, "|"));
+  return /*#__PURE__*/React.createElement(React.Fragment, null, scratch.split("\n").map((line, li, arr) => {
+    const parts = line.split(/(＝-?\d+\.?\d*)/g);
+    return /*#__PURE__*/React.createElement("div", {
+      key: li,
+      style: {
+        minHeight: "22px",
+        lineHeight: "1.7"
+      }
+    }, parts.map((p, pi) => /^＝-?\d+\.?\d*$/.test(p) ? /*#__PURE__*/React.createElement("span", {
+      key: pi,
+      className: "calc-result-badge",
+      style: {
+        background: "#f3e8ff",
+        color: "#7e22ce",
+        borderBottom: "2px solid #d8b4fe"
+      }
+    }, p) : /*#__PURE__*/React.createElement("span", {
+      key: pi
+    }, p)), focused && li === arr.length - 1 && /*#__PURE__*/React.createElement("span", {
+      className: "cursor-blink"
+    }, "|"));
+  }));
+}
+
+// ─── アプリ ────────────────────────────────────────────────
+function App() {
+  const [mode, setMode] = useState("setup");
+  const [totalQ, setTotalQ] = useState(10);
+  const [diff, setDiff] = useState("easy"); // easy / hard / mix
+  const [problems, setProblems] = useState([]);
+  const [current, setCurrent] = useState(0);
+  const [score, setScore] = useState(0);
+  const [scratch, setScratch] = useState("");
+  const [calcError, setCalcError] = useState(false);
+  const [answerVals, setAnswerVals] = useState({});
+  const [focused, setFocused] = useState("scratch");
+  const [checked, setChecked] = useState(false);
+  const [correct, setCorrect] = useState({});
+  const [hintIdx, setHintIdx] = useState(-1);
+  const [celeb, setCeleb] = useState(false);
+  const [streak, setStreak] = useState(0);
+  const [best, setBest] = useState(0);
+  const [confirmOpen, setConfirmOpen] = useState(false);
+  useEffect(() => {
+    try {
+      const s = localStorage.getItem(STORAGE_KEY);
+      if (s) setBest(parseInt(s) || 0);
+    } catch (_) {}
+  }, []);
+  const saveBest = v => {
+    try {
+      localStorage.setItem(STORAGE_KEY, String(v));
+    } catch (_) {}
+  };
+  const startQuiz = () => {
+    setProblems(Array.from({
+      length: totalQ
+    }, () => genProblem(diff)));
+    setCurrent(0);
+    setScore(0);
+    setStreak(0);
+    setScratch("");
+    setAnswerVals({});
+    setFocused("scratch");
+    setChecked(false);
+    setCorrect({});
+    setHintIdx(-1);
+    setCeleb(false);
+    setConfirmOpen(false);
+    setMode("quiz");
+  };
+  const isScratch = focused === "scratch";
+  const ansIdx = isScratch ? -1 : parseInt(focused.split("-")[1]);
+  const problem = problems[current] || null;
+  const pressKey = useCallback(key => {
+    if (key.val === "CALC") {
+      if (!isScratch) return;
+      const r = evalExpr(getExprToParse(scratch));
+      if (r === null) {
+        setCalcError(true);
+        setTimeout(() => setCalcError(false), 600);
+        return;
+      }
+      setScratch(s => s + `＝${r}`);
+      return;
+    }
+    if (isScratch) {
+      if (key.val === "BACK") setScratch(s => {
+        const m = s.match(/(＝-?\d+\.?\d*)$/);
+        return m ? s.slice(0, -m[0].length) : s.slice(0, -1);
+      });else if (key.val === "CLEAR") setScratch("");else if (key.val === "=") setScratch(s => s + "\n");else setScratch(s => s + key.val);
+    } else {
+      // 答え欄：数字・小数点のみ受け付ける
+      if (key.type === "op" || key.type === "unit" || key.val === "CALC") return;
+      setAnswerVals(prev => {
+        const cur = prev[ansIdx] || "";
+        if (key.val === "BACK") return {
+          ...prev,
+          [ansIdx]: cur.slice(0, -1)
+        };
+        if (key.val === "CLEAR") return {
+          ...prev,
+          [ansIdx]: ""
+        };
+        // 小数点は1つまで
+        if (key.val === "." && cur.includes(".")) return prev;
+        if (cur.length >= 8) return prev;
+        return {
+          ...prev,
+          [ansIdx]: cur + key.val
+        };
+      });
+    }
+  }, [isScratch, ansIdx, scratch]);
+  const checkAll = () => {
+    const r = {};
+    problem.answers.forEach((a, i) => {
+      // 小数点あり（円の面積など）は文字列比較
+      const inputNum = parseFloat(answerVals[i] || "");
+      r[i] = Math.abs(inputNum - a.value) < 0.01;
+    });
+    setCorrect(r);
+    setChecked(true);
+    if (Object.values(r).every(Boolean)) {
+      setScore(s => s + 1);
+      const ns = streak + 1;
+      setStreak(ns);
+      if (ns > best) {
+        setBest(ns);
+        saveBest(ns);
+      }
+      setCeleb(true);
+      setTimeout(() => setCeleb(false), 2000);
+    } else {
+      setStreak(0);
+    }
+  };
+  const nextQuestion = () => {
+    if (current + 1 >= totalQ) {
+      setMode("result");
+      return;
+    }
+    setCurrent(c => c + 1);
+    setScratch("");
+    setAnswerVals({});
+    setFocused("scratch");
+    setChecked(false);
+    setCorrect({});
+    setHintIdx(-1);
+    setCeleb(false);
+  };
+  const allCorrect = checked && Object.values(correct).every(Boolean);
+
+  // ── セットアップ ──────────────────────────────────────────
+  if (mode === "setup") return /*#__PURE__*/React.createElement("div", {
+    className: "setup-wrap",
+    style: {
+      background: "#fdf4ff"
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "setup-card"
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "setup-emoji"
+  }, "\uD83D\uDCD0"), /*#__PURE__*/React.createElement("h1", {
+    className: "setup-title",
+    style: {
+      color: "#581c87"
+    }
+  }, "\u56F3\u5F62\u554F\u984C \u7DF4\u7FD2"), /*#__PURE__*/React.createElement("p", {
+    className: "setup-sub"
+  }, "\u9762\u7A4D\u30FB\u4F53\u7A4D\u30FB\u89D2\u5EA6\u30FB\u76F8\u4F3C\uFF08\u5C0F\u5B66\u6821\u9AD8\u5B66\u5E74\uFF09"), best > 0 && /*#__PURE__*/React.createElement("div", {
+    className: "best-badge",
+    style: {
+      background: "#f3e8ff",
+      border: "1.5px solid #d8b4fe",
+      color: "#581c87"
+    }
+  }, "\uD83C\uDFC6 \u6700\u9AD8\u9023\u7D9A\u8A18\u9332\uFF1A", /*#__PURE__*/React.createElement("strong", null, best, "\u554F")), /*#__PURE__*/React.createElement("div", {
+    className: "qcount-section"
+  }, "\u96E3\u6613\u5EA6\u3092\u9078\u3076"), /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: "flex",
+      flexDirection: "column",
+      gap: "8px",
+      marginBottom: "20px"
+    }
+  }, [{
+    key: "easy",
+    emoji: "⭐",
+    label: "かんたん",
+    sub: "小5レベル（面積・角度・体積の基本）",
+    bg: "#f0fdf4",
+    border: "#4ade80",
+    activeBg: "#22c55e",
+    shadow: "#15803d"
+  }, {
+    key: "hard",
+    emoji: "⭐⭐",
+    label: "ふつう",
+    sub: "小6レベル（相似・おうぎ形・拡大縮小など）",
+    bg: "#fff7ed",
+    border: "#fb923c",
+    activeBg: "#f97316",
+    shadow: "#c2410c"
+  }, {
+    key: "mix",
+    emoji: "⭐⭐⭐",
+    label: "ミックス",
+    sub: "全16タイプからランダム",
+    bg: "#f3e8ff",
+    border: "#c084fc",
+    activeBg: "#a855f7",
+    shadow: "#7e22ce"
+  }].map(d => /*#__PURE__*/React.createElement("button", {
+    key: d.key,
+    onClick: () => setDiff(d.key),
+    style: {
+      display: "flex",
+      alignItems: "center",
+      gap: "12px",
+      padding: "12px 16px",
+      borderRadius: "14px",
+      cursor: "pointer",
+      border: diff === d.key ? `2px solid ${d.activeBg}` : `2px solid ${d.border}`,
+      background: diff === d.key ? d.activeBg : d.bg,
+      boxShadow: diff === d.key ? `0 3px 0 ${d.shadow}` : "none",
+      textAlign: "left"
+    }
+  }, /*#__PURE__*/React.createElement("span", {
+    style: {
+      fontSize: "20px"
+    }
+  }, d.emoji), /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontWeight: "900",
+      fontSize: "15px",
+      color: diff === d.key ? "#fff" : "#1f2937"
+    }
+  }, d.label), /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: "11px",
+      color: diff === d.key ? "rgba(255,255,255,0.85)" : "#6b7280"
+    }
+  }, d.sub)), diff === d.key && /*#__PURE__*/React.createElement("span", {
+    style: {
+      marginLeft: "auto",
+      fontSize: "18px"
+    }
+  }, "\u2705")))), /*#__PURE__*/React.createElement("div", {
+    className: "qcount-section"
+  }, "\u4F55\u554F\u3084\u308B\uFF1F"), /*#__PURE__*/React.createElement("div", {
+    className: "qcount-grid"
+  }, Q_OPTIONS.map(n => /*#__PURE__*/React.createElement("button", {
+    key: n,
+    className: "qcount-btn",
+    style: {
+      border: totalQ === n ? "2px solid #9333ea" : "2px solid #d1d5db",
+      background: totalQ === n ? "#a855f7" : "#f9fafb",
+      color: totalQ === n ? "#fff" : "#374151",
+      boxShadow: totalQ === n ? "0 3px 0 #7e22ce" : "none"
+    },
+    onClick: () => setTotalQ(n)
+  }, n, "\u554F"))), /*#__PURE__*/React.createElement("button", {
+    className: "start-btn",
+    style: {
+      background: "linear-gradient(135deg,#c084fc,#a855f7)",
+      color: "#fff",
+      boxShadow: "0 4px 0 #7e22ce"
+    },
+    onClick: startQuiz
+  }, "\u30B9\u30BF\u30FC\u30C8\uFF01 \uD83D\uDE80")));
+
+  // ── 結果 ──────────────────────────────────────────────────
+  if (mode === "result") {
+    const pct = Math.round(score / totalQ * 100);
+    return /*#__PURE__*/React.createElement("div", {
+      className: "setup-wrap",
+      style: {
+        background: "#fdf4ff"
+      }
+    }, /*#__PURE__*/React.createElement("div", {
+      className: "setup-card"
+    }, /*#__PURE__*/React.createElement("div", {
+      className: "setup-emoji"
+    }, pct === 100 ? "🏆" : pct >= 70 ? "🎉" : "💪"), /*#__PURE__*/React.createElement("h2", {
+      className: "setup-title",
+      style: {
+        color: "#581c87"
+      }
+    }, "\u304A\u308F\u308A\uFF01"), /*#__PURE__*/React.createElement("p", {
+      className: "result-score"
+    }, totalQ, "\u554F\u4E2D ", /*#__PURE__*/React.createElement("span", {
+      className: "result-big",
+      style: {
+        color: "#a855f7"
+      }
+    }, score), " \u554F\u6B63\u89E3"), /*#__PURE__*/React.createElement("div", {
+      className: "pct-bar-bg",
+      style: {
+        background: "#f3e8ff"
+      }
+    }, /*#__PURE__*/React.createElement("div", {
+      className: "pct-bar-fill",
+      style: {
+        background: "linear-gradient(90deg,#c084fc,#a855f7)",
+        width: `${pct}%`
+      }
+    })), /*#__PURE__*/React.createElement("p", {
+      className: "pct-text"
+    }, pct, "%"), /*#__PURE__*/React.createElement("div", {
+      className: "streak-result-row"
+    }, /*#__PURE__*/React.createElement("div", {
+      className: "streak-result-box"
+    }, /*#__PURE__*/React.createElement("div", {
+      className: "streak-result-label"
+    }, "\u3053\u306E\u56DE\u306E\u6700\u9AD8\u9023\u7D9A"), /*#__PURE__*/React.createElement("div", {
+      className: "streak-result-val",
+      style: {
+        color: "#ef4444"
+      }
+    }, "\uD83D\uDD25 ", streak, "\u554F")), /*#__PURE__*/React.createElement("div", {
+      className: "streak-result-box"
+    }, /*#__PURE__*/React.createElement("div", {
+      className: "streak-result-label"
+    }, "\u6B74\u4EE3\u6700\u9AD8\u9023\u7D9A"), /*#__PURE__*/React.createElement("div", {
+      className: "streak-result-val",
+      style: {
+        color: "#f59f00"
+      }
+    }, "\uD83C\uDFC6 ", best, "\u554F"))), /*#__PURE__*/React.createElement("div", {
+      style: {
+        display: "flex",
+        gap: "8px",
+        marginTop: "16px"
+      }
+    }, /*#__PURE__*/React.createElement("button", {
+      className: "start-btn",
+      style: {
+        background: "linear-gradient(135deg,#c084fc,#a855f7)",
+        color: "#fff",
+        boxShadow: "0 4px 0 #7e22ce"
+      },
+      onClick: startQuiz
+    }, "\u3082\u3046\u4E00\u5EA6"), /*#__PURE__*/React.createElement("button", {
+      className: "start-btn",
+      style: {
+        background: "#6b7280",
+        color: "#fff",
+        boxShadow: "0 4px 0 #374151"
+      },
+      onClick: () => setMode("setup")
+    }, "\u8A2D\u5B9A\u3078"))));
+  }
+  if (!problem) return null;
+  const progress = current / totalQ * 100;
+
+  // ── クイズ ────────────────────────────────────────────────
+  return /*#__PURE__*/React.createElement("div", {
+    className: "quiz-root",
+    style: {
+      background: "#fdf4ff"
+    }
+  }, confirmOpen && /*#__PURE__*/React.createElement("div", {
+    className: "confirm-overlay",
+    onClick: () => setConfirmOpen(false)
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "confirm-sheet",
+    onClick: e => e.stopPropagation()
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "confirm-title"
+  }, "\uD83D\uDCDD \u7B54\u3048\u5408\u308F\u305B\u3059\u308B\uFF1F"), /*#__PURE__*/React.createElement("div", {
+    className: "confirm-sub"
+  }, "\u307E\u3060\u76F4\u3057\u305F\u3044\u3068\u3053\u308D\u306F\u306A\u3044\uFF1F"), /*#__PURE__*/React.createElement("div", {
+    className: "confirm-btn-row"
+  }, /*#__PURE__*/React.createElement("button", {
+    className: "confirm-cancel-btn",
+    onClick: () => setConfirmOpen(false)
+  }, "\u3082\u3069\u308B"), /*#__PURE__*/React.createElement("button", {
+    className: "confirm-ok-btn",
+    style: {
+      background: "linear-gradient(135deg,#c084fc,#a855f7)",
+      color: "#fff"
+    },
+    onClick: () => {
+      setConfirmOpen(false);
+      checkAll();
+    }
+  }, "\u7B54\u3048\u5408\u308F\u305B \u2714")))), celeb && /*#__PURE__*/React.createElement("div", {
+    className: "celeb-overlay"
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "celeb-box"
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "celeb-emoji"
+  }, "\uD83C\uDF89"), /*#__PURE__*/React.createElement("div", {
+    className: "celeb-text",
+    style: {
+      color: "#7e22ce"
+    }
+  }, "\u305B\u3044\u304B\u3044\uFF01"), /*#__PURE__*/React.createElement("div", {
+    className: "celeb-stars"
+  }, randomStars(5)), streak >= 3 && /*#__PURE__*/React.createElement("div", {
+    className: "celeb-streak",
+    style: {
+      background: "#ef4444"
+    }
+  }, "\uD83D\uDD25 ", streak, "\u308C\u3093\u305E\u304F\uFF01"), streak === best && streak > 1 && /*#__PURE__*/React.createElement("div", {
+    className: "celeb-streak",
+    style: {
+      background: "#f59f00",
+      marginTop: "6px"
+    }
+  }, "\uD83C\uDFC6 \u65B0\u8A18\u9332\uFF01"))), /*#__PURE__*/React.createElement("div", {
+    className: "quiz-header"
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "header-left"
+  }, /*#__PURE__*/React.createElement("span", {
+    className: "q-label",
+    style: {
+      color: "#581c87"
+    }
+  }, "Q", current + 1, /*#__PURE__*/React.createElement("span", {
+    className: "q-total"
+  }, "/", totalQ)), /*#__PURE__*/React.createElement("span", {
+    className: "type-tag",
+    style: {
+      background: problem.color
+    }
+  }, problem.title)), /*#__PURE__*/React.createElement("div", {
+    className: "header-right"
+  }, /*#__PURE__*/React.createElement("span", {
+    className: "score-label"
+  }, "\u2B50 ", score), streak >= 2 && /*#__PURE__*/React.createElement("span", {
+    className: "streak-tag-sm"
+  }, "\uD83D\uDD25", streak), best > 0 && /*#__PURE__*/React.createElement("span", {
+    className: "best-tag-sm"
+  }, "\uD83C\uDFC6", best))), /*#__PURE__*/React.createElement("div", {
+    className: "progress-bg",
+    style: {
+      background: "#f3e8ff"
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "progress-fill",
+    style: {
+      background: problem.color,
+      width: `${progress}%`
+    }
+  })), /*#__PURE__*/React.createElement("div", {
+    className: "problem-card",
+    style: {
+      borderTop: `5px solid ${problem.color}`
+    }
+  }, problem.text.split("\n").map((line, i) => /*#__PURE__*/React.createElement("p", {
+    key: i,
+    className: "problem-line"
+  }, line.split(/(\*\*[^*]+\*\*)/).map((seg, j) => seg.startsWith("**") ? /*#__PURE__*/React.createElement("strong", {
+    key: j,
+    className: "problem-em",
+    style: {
+      color: problem.color
+    }
+  }, seg.replace(/\*\*/g, "")) : seg)))), /*#__PURE__*/React.createElement("div", {
+    className: "figure-card"
+  }, problem.figure), /*#__PURE__*/React.createElement("div", {
+    className: "hint-section"
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "hint-controls"
+  }, /*#__PURE__*/React.createElement("button", {
+    className: "hint-btn",
+    onClick: () => setHintIdx(h => Math.min(h + 1, problem.hints.length - 1)),
+    disabled: hintIdx >= problem.hints.length - 1
+  }, "\uD83D\uDCA1 \u30D2\u30F3\u30C8", hintIdx < 0 ? "を見る" : `(${hintIdx + 1}/${problem.hints.length})`), hintIdx >= 0 && /*#__PURE__*/React.createElement("button", {
+    className: "hint-close-btn",
+    onClick: () => setHintIdx(-1)
+  }, "\u2715 \u9589\u3058\u308B")), hintIdx >= 0 && /*#__PURE__*/React.createElement("div", {
+    className: "hint-box"
+  }, problem.hints.slice(0, hintIdx + 1).map((h, i) => /*#__PURE__*/React.createElement("div", {
+    key: i,
+    style: {
+      fontSize: "13px",
+      color: "#374151",
+      lineHeight: "1.8",
+      fontFamily: "monospace",
+      whiteSpace: "pre-wrap",
+      opacity: i < hintIdx ? 0.55 : 1
+    }
+  }, h)))), /*#__PURE__*/React.createElement("div", {
+    className: "scratch-area",
+    style: {
+      border: `2px solid ${calcError ? "#ef4444" : isScratch ? "#a855f7" : "#e5e7eb"}`,
+      boxShadow: isScratch && !calcError ? "0 0 0 3px rgba(168,85,247,0.15)" : calcError ? "0 0 0 3px rgba(239,68,68,0.15)" : "none",
+      background: calcError ? "#fef2f2" : "#fff"
+    },
+    onClick: () => setFocused("scratch")
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "scratch-area-label-row"
+  }, /*#__PURE__*/React.createElement("span", {
+    className: "scratch-area-label"
+  }, "\uD83D\uDCDD \u9014\u4E2D\u5F0F"), /*#__PURE__*/React.createElement("span", {
+    className: "scratch-area-hint"
+  }, "\uFF1D\u8A08\u7B97 \u3067\u81EA\u52D5\u8A08\u7B97")), /*#__PURE__*/React.createElement("div", {
+    className: "scratch-display"
+  }, /*#__PURE__*/React.createElement(ScratchDisplay, {
+    scratch: scratch,
+    focused: isScratch
+  }))), /*#__PURE__*/React.createElement("div", {
+    className: "answers-row"
+  }, problem.answers.map((a, i) => {
+    const isFoc = focused === `ans-${i}`;
+    const isOk = checked ? correct[i] : null;
+    return /*#__PURE__*/React.createElement("div", {
+      key: i,
+      className: "answer-slot",
+      style: {
+        background: isOk === true ? "#f3e8ff" : isOk === false ? "#fef2f2" : "#fff",
+        border: `2px solid ${isFoc ? "#a855f7" : isOk === true ? "#c084fc" : isOk === false ? "#ef4444" : "#e5e7eb"}`,
+        boxShadow: isFoc ? "0 0 0 3px rgba(168,85,247,0.15)" : "none"
+      },
+      onClick: () => setFocused(`ans-${i}`)
+    }, /*#__PURE__*/React.createElement("div", {
+      className: "ans-label"
+    }, a.label), /*#__PURE__*/React.createElement("div", {
+      style: {
+        display: "flex",
+        alignItems: "baseline",
+        gap: "4px"
+      }
+    }, /*#__PURE__*/React.createElement("div", {
+      className: "ans-display"
+    }, answerVals[i] || /*#__PURE__*/React.createElement("span", {
+      className: "scratch-placeholder"
+    }, "?"), isFoc && /*#__PURE__*/React.createElement("span", {
+      className: "cursor-blink"
+    }, "|")), answerVals[i] && /*#__PURE__*/React.createElement("span", {
+      className: "ans-unit"
+    }, a.unit)), isOk === true && /*#__PURE__*/React.createElement("div", {
+      className: "ans-badge"
+    }, "\u2705"), isOk === false && /*#__PURE__*/React.createElement("div", {
+      className: "ans-badge"
+    }, "\u274C"), checked && isOk === false && /*#__PURE__*/React.createElement("div", {
+      className: "ans-correct-val",
+      style: {
+        color: "#7e22ce"
+      }
+    }, "\u2192 ", a.value, a.unit));
+  })), /*#__PURE__*/React.createElement("div", {
+    className: "keypad",
+    style: {
+      background: "#f3e8ff"
+    }
+  }, [[{
+    label: "7",
+    val: "7",
+    type: "num"
+  }, {
+    label: "8",
+    val: "8",
+    type: "num"
+  }, {
+    label: "9",
+    val: "9",
+    type: "num"
+  }, {
+    label: "+",
+    val: "+",
+    type: "op"
+  }, {
+    label: "(",
+    val: "(",
+    type: "op"
+  }], [{
+    label: "4",
+    val: "4",
+    type: "num"
+  }, {
+    label: "5",
+    val: "5",
+    type: "num"
+  }, {
+    label: "6",
+    val: "6",
+    type: "num"
+  }, {
+    label: "−",
+    val: "-",
+    type: "op"
+  }, {
+    label: ")",
+    val: ")",
+    type: "op"
+  }], [{
+    label: "1",
+    val: "1",
+    type: "num"
+  }, {
+    label: "2",
+    val: "2",
+    type: "num"
+  }, {
+    label: "3",
+    val: "3",
+    type: "num"
+  }, {
+    label: "×",
+    val: "×",
+    type: "op"
+  }, {
+    label: "÷",
+    val: "÷",
+    type: "op"
+  }], [{
+    label: "0",
+    val: "0",
+    type: "num"
+  }, {
+    label: ".",
+    val: ".",
+    type: "num"
+  }, {
+    label: "⌫",
+    val: "BACK",
+    type: "ctrl"
+  }, {
+    label: "＝計算",
+    val: "CALC",
+    type: "calc"
+  }, {
+    label: "C",
+    val: "CLEAR",
+    type: "ctrl"
+  }]].map((row, ri) => /*#__PURE__*/React.createElement("div", {
+    key: ri,
+    className: "key-row"
+  }, row.map(key => {
+    const dis = !isScratch && (key.type === "op" || key.val === "CALC");
+    let bg = "#fff",
+      color = "#1f2937";
+    if (key.type === "op") {
+      bg = "#e9d5ff";
+      color = "#581c87";
+    }
+    if (key.type === "ctrl") {
+      bg = "#fca5a5";
+      color = "#fff";
+    }
+    if (key.val === "CALC") {
+      bg = "linear-gradient(135deg,#c084fc,#a855f7)";
+      color = "#fff";
+    }
+    if (dis) {
+      bg = "#e5e7eb";
+      color = "#9ca3af";
+    }
+    return /*#__PURE__*/React.createElement("button", {
+      key: key.val,
+      className: `key-btn${key.val === "CALC" ? " calc" : ""}${dis ? " disabled" : ""}`,
+      style: {
+        background: bg,
+        color,
+        boxShadow: dis ? "none" : "0 3px 0 rgba(0,0,0,0.15)"
+      },
+      onClick: () => !dis && pressKey(key),
+      disabled: dis
+    }, key.label);
+  })))), /*#__PURE__*/React.createElement("div", {
+    className: "action-row"
+  }, !checked ? /*#__PURE__*/React.createElement("button", {
+    className: "check-btn",
+    style: {
+      background: "linear-gradient(135deg,#c084fc,#a855f7)",
+      color: "#fff",
+      boxShadow: "0 4px 0 #7e22ce"
+    },
+    onClick: () => setConfirmOpen(true)
+  }, "\u3053\u305F\u3048\u3092\u30C1\u30A7\u30C3\u30AF \u2714") : /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement("button", {
+    className: "next-btn",
+    style: {
+      background: "linear-gradient(135deg,#4ade80,#22c55e)",
+      color: "#14532d",
+      boxShadow: "0 4px 0 #15803d"
+    },
+    onClick: nextQuestion
+  }, current + 1 >= totalQ ? "結果を見る 🎉" : "つぎへ →"), !allCorrect && /*#__PURE__*/React.createElement("button", {
+    className: "retry-btn",
+    onClick: () => {
+      setChecked(false);
+      setCorrect({});
+    }
+  }, "\u3084\u308A\u306A\u304A\u3059"))));
+}
+ReactDOM.createRoot(document.getElementById("root")).render(/*#__PURE__*/React.createElement(App, null));
+</script>
+</body>
+</html>
