@@ -22,43 +22,91 @@ const STORAGE_KEY = "kafusoku_best";
 
 
 function genProblem() {
-  const type = Math.floor(Math.random() * 3);
+  const type = Math.floor(Math.random() * 4);
+
   if (type === 0) {
-    const n=randInt(5,15), small=randInt(2,6), large=small+randInt(2,4);
-    const amari=randInt(1,8);
-    const total = small*n + amari;
-    const fusoku = large*n - total;
-    if (fusoku <= 0) return genProblem();
-    return {
-      title:"過不足算①", color:"#06b6d4",
-      text:`${n}人に${small}個ずつ配ると **${amari}個** 余り、\n${large}個ずつ配ると **${fusoku}個** 足りません。\n全部で何個ありますか？`,
-      answers:[{label:"個数",value:total,unit:"個"}],
-      hints:["🔑 少ない方の配り方から計算しよう！",`${small}個ずつ×${n}人＋余り${amari}個`,`＝ ${small*n}＋${amari} ＝ ${total}個 ✅`],
-    };
-  }
-  if (type === 1) {
+    // 人数を求める（余りと不足）
     const small=randInt(2,5), diff=randInt(1,3), large=small+diff;
     const amari=randInt(1,6), fusoku=randInt(1,6);
     const total_diff=amari+fusoku;
     if (total_diff % diff !== 0) return genProblem();
     const n=total_diff/diff;
+    const total=small*n+amari;
+    const items=[["クッキー","人"],["あめ","人"],["シール","人"],["鉛筆","人"]];
+    const [item]=items[randInt(0,3)];
     return {
-      title:"過不足算②", color:"#0ea5e9",
-      text:`えんぴつを何人かに配ります。\n1人に **${small}本** ずつ配ると **${amari}本** 余り、\n1人に **${large}本** ずつ配ると **${fusoku}本** 足りません。\n何人いますか？`,
+      title:"過不足算①（人数を求める）", color:"#06b6d4",
+      text:`${item}を何人かに配ります。\n1人に **${small}個** ずつ配ると **${amari}個** 余り、\n1人に **${large}個** ずつ配ると **${fusoku}個** 足りません。\n何人いますか？`,
       answers:[{label:"人数",value:n,unit:"人"}],
-      hints:["🔑 (余り＋不足)÷(1人あたりの差)＝人数",`差：${large}−${small}＝${diff}本`,`人数＝(${amari}＋${fusoku})÷${diff}＝${n}人 ✅`],
+      hints:[
+        "🔑 (余り＋不足)÷(1人あたりの差)＝人数",
+        `1人あたりの差：${large}−${small}＝${diff}個`,
+        `人数＝(${amari}＋${fusoku})÷${diff}＝${n}人 ✅`,
+      ],
     };
   }
-  const small=randInt(2,5), diff=randInt(1,3), large=small+diff;
-  const amari_l=randInt(1,5);
-  const n=randInt(4,12);
-  const amari_s = amari_l + diff*n;
-  const total = small*n + amari_s;
+
+  if (type === 1) {
+    // 個数を求める（人数を求めてから個数を求める）
+    const small=randInt(2,5), diff=randInt(1,3), large=small+diff;
+    const amari=randInt(1,6), fusoku=randInt(1,6);
+    const total_diff=amari+fusoku;
+    if (total_diff % diff !== 0) return genProblem();
+    const n=total_diff/diff;
+    const total=small*n+amari;
+    const items=[["おかし","人"],["ノート","人"],["カード","人"],["折り紙","人"]];
+    const [item]=items[randInt(0,3)];
+    return {
+      title:"過不足算②（個数を求める）", color:"#0ea5e9",
+      text:`${item}を何人かに配ります。\n1人に **${small}個** ずつ配ると **${amari}個** 余り、\n1人に **${large}個** ずつ配ると **${fusoku}個** 足りません。\n${item}は全部で何個ありますか？`,
+      answers:[{label:"個数",value:total,unit:"個"}],
+      hints:[
+        "🔑 まず人数を求めよう",
+        `人数＝(${amari}＋${fusoku})÷(${large}−${small})＝${n}人`,
+        `個数＝${small}×${n}＋${amari}＝${total}個 ✅`,
+      ],
+    };
+  }
+
+  if (type === 2) {
+    // 両方余る → 人数を求める
+    const small=randInt(2,5), diff=randInt(1,3), large=small+diff;
+    const amari_l=randInt(1,5), n=randInt(4,12);
+    const amari_s=amari_l+diff*n;
+    const items=[["えんぴつ","人"],["消しゴム","人"],["ビー玉","人"],["豆","人"]];
+    const [item]=items[randInt(0,3)];
+    return {
+      title:"過不足算③（両方余る）", color:"#38bdf8",
+      text:`${item}を何人かに配ります。\n1人に **${small}個** ずつ配ると **${amari_s}個** 余り、\n1人に **${large}個** ずつ配ると **${amari_l}個** 余ります。\n何人いますか？`,
+      answers:[{label:"人数",value:n,unit:"人"}],
+      hints:[
+        "🔑 両方余るとき：(余りの差)÷(1人あたりの差)＝人数",
+        `余りの差：${amari_s}−${amari_l}＝${amari_s-amari_l}個`,
+        `1人あたりの差：${large}−${small}＝${diff}個`,
+        `人数＝${amari_s-amari_l}÷${diff}＝${n}人 ✅`,
+      ],
+    };
+  }
+
+  // type === 3: 長いす・バスなどの応用
+  const small=randInt(3,5), diff=randInt(1,2), large=small+diff;
+  const amari=randInt(1,5), n=randInt(4,12);
+  const fusoku=large*n-(small*n+amari);
+  if (fusoku<=0) return genProblem();
+  const things=[
+    {place:"長いす",unit:"脚",verb:"座る",each:"人"},
+    {place:"テーブル",unit:"台",verb:"座る",each:"人"},
+    {place:"バス",unit:"台",verb:"乗る",each:"人"},
+  ][randInt(0,2)];
   return {
-    title:"過不足算③（両方余）", color:"#38bdf8",
-    text:`${n}人に配ります。\n1人に **${small}個** ずつ配ると **${amari_s}個** 余り、\n1人に **${large}個** ずつ配ると **${amari_l}個** 余ります。\n全部で何個ありますか？`,
-    answers:[{label:"個数",value:total,unit:"個"}],
-    hints:["🔑 少ない方の配り方から計算しよう！",`${small}個×${n}人＋${amari_s}個余り`,`＝ ${small*n}＋${amari_s}＝${total}個 ✅`],
+    title:"過不足算④（応用）", color:"#0284c7",
+    text:`${things.place}に${things.each}が${things.verb}ます。\n1${things.unit}に **${small}${things.each}** ずつだと **${amari}${things.each}** 余り、\n1${things.unit}に **${large}${things.each}** ずつだと **${fusoku}${things.each}** 足りません。\n${things.place}は何${things.unit}ありますか？`,
+    answers:[{label:`${things.place}の数`,value:n,unit:things.unit}],
+    hints:[
+      `🔑 1${things.unit}あたりの差で割る`,
+      `差：${large}−${small}＝${diff}${things.each}`,
+      `${things.place}の数＝(${amari}＋${fusoku})÷${diff}＝${n}${things.unit} ✅`,
+    ],
   };
 }
 

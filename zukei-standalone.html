@@ -1001,25 +1001,62 @@ function PolygonFigure({
 // 平行線と角度
 function ParallelAngleFigure({
   angleA,
-  angleType,
-  unknown
+  angleType
 }) {
   const SW = 300,
-    SH = 200;
-  const y1 = 60,
-    y2 = 150;
-  // 2本の平行線
-  // 斜線が貫く
-  const lineAngle = 35 * Math.PI / 180;
-  const lx = 60,
-    rx = 240;
-  const tx1 = lx + (y2 - y1) * Math.tan(lineAngle) * 0.6;
-  const tx2 = lx + (y2 - y1) * Math.tan(lineAngle);
-  // 同位角: 上の線の左側 = 下の線の左側
-  // 錯角: 上の線の左側 = 下の線の右側
+    SH = 220;
+  const y1 = 65,
+    y2 = 155;
+  const lx = 30,
+    rx = 270;
+
+  // 斜線の交点
+  const ix1 = 130,
+    ix2 = 170; // 上の平行線・下の平行線との交点x
+
+  // 斜線の傾き（交点を通る）
+  const slope = (ix2 - ix1) / (y2 - y1);
+  // 斜線の両端
+  const sx1 = ix1 - slope * 50,
+    sy1 = y1 - 50;
+  const sx2 = ix2 + slope * 60,
+    sy2 = y2 + 60;
+
+  // 角度をラジアンに変換して弧の座標を計算
+  const deg = angleA * Math.PI / 180;
+  // 斜線の上方向の角度（平行線に対して）
+  const lineAngle = Math.atan2(ix2 - ix1, y2 - y1); // 斜線の水平からの角度
+
+  // 上の交点での既知角（斜線の左下側）
+  const arcR = 28;
+  // 既知角の弧：平行線右向き(0°)から斜線下向き方向まで
+  const a1Start = Math.PI; // 左向き
+  const a1End = Math.PI + deg;
+  const arc1sx = ix1 + arcR * Math.cos(a1Start);
+  const arc1sy = y1 + arcR * Math.sin(a1Start);
+  const arc1ex = ix1 + arcR * Math.cos(a1End);
+  const arc1ey = y1 + arcR * Math.sin(a1End);
+
+  // 下の交点での「?」角
+  // 同位角：上と同じ側（左下） → 同じ弧の位置
+  // 錯角：反対側（右上）
   const isDoui = angleType === "同位角";
-  const unknownY = y2;
-  const unknownX = isDoui ? tx1 + 12 : rx - tx1 + lx + 12;
+  const a2Start = isDoui ? Math.PI : 0;
+  const a2End = isDoui ? Math.PI + deg : deg - Math.PI;
+  const arc2sx = ix2 + arcR * Math.cos(a2Start);
+  const arc2sy = y2 + arcR * Math.sin(a2Start);
+  const arc2ex = ix2 + arcR * Math.cos(a2End < a2Start ? a2End + 2 * Math.PI : a2End);
+  const arc2ey = y2 + arcR * Math.sin(a2End < a2Start ? a2End + 2 * Math.PI : a2End);
+
+  // 既知角ラベル位置（弧の中間）
+  const a1Mid = a1Start + deg / 2;
+  const lbl1x = ix1 + (arcR + 14) * Math.cos(a1Mid);
+  const lbl1y = y1 + (arcR + 14) * Math.sin(a1Mid);
+
+  // ?ラベル位置
+  const a2Mid = isDoui ? a2Start + deg / 2 : a2Start + (a2Start - deg) / 2;
+  const lbl2x = ix2 + (arcR + 14) * Math.cos(a2Mid);
+  const lbl2y = y2 + (arcR + 14) * Math.sin(a2Mid);
   return /*#__PURE__*/React.createElement("svg", {
     width: SW,
     height: SH
@@ -1042,64 +1079,80 @@ function ParallelAngleFigure({
       strokeWidth: "2.5"
     }
   }), /*#__PURE__*/React.createElement("line", {
-    x1: lx + 70,
-    y1: y1 - 6,
-    x2: lx + 80,
-    y2: y1 + 6,
+    x1: 200,
+    y1: y1 - 7,
+    x2: 208,
+    y2: y1 + 7,
     style: {
       stroke: "#9333ea",
       strokeWidth: "2"
     }
   }), /*#__PURE__*/React.createElement("line", {
-    x1: lx + 80,
-    y1: y1 - 6,
-    x2: lx + 90,
-    y2: y1 + 6,
+    x1: 210,
+    y1: y1 - 7,
+    x2: 218,
+    y2: y1 + 7,
     style: {
       stroke: "#9333ea",
       strokeWidth: "2"
     }
   }), /*#__PURE__*/React.createElement("line", {
-    x1: lx + 70,
-    y1: y2 - 6,
-    x2: lx + 80,
-    y2: y2 + 6,
+    x1: 200,
+    y1: y2 - 7,
+    x2: 208,
+    y2: y2 + 7,
     style: {
       stroke: "#9333ea",
       strokeWidth: "2"
     }
   }), /*#__PURE__*/React.createElement("line", {
-    x1: lx + 80,
-    y1: y2 - 6,
-    x2: lx + 90,
-    y2: y2 + 6,
+    x1: 210,
+    y1: y2 - 7,
+    x2: 218,
+    y2: y2 + 7,
     style: {
       stroke: "#9333ea",
       strokeWidth: "2"
     }
   }), /*#__PURE__*/React.createElement("line", {
-    x1: lx + 20,
-    y1: y1 + (y1 - y2) * 0.4,
-    x2: tx2 + 30,
-    y2: y2 + (y2 - y1) * 0.4,
+    x1: sx1,
+    y1: sy1,
+    x2: sx2,
+    y2: sy2,
     style: {
       stroke: "#374151",
       strokeWidth: "2.5"
     }
+  }), /*#__PURE__*/React.createElement("path", {
+    d: `M${arc1sx},${arc1sy} A${arcR},${arcR} 0 0,1 ${arc1ex},${arc1ey}`,
+    style: {
+      fill: "none",
+      stroke: "#f59e0b",
+      strokeWidth: "2"
+    }
   }), /*#__PURE__*/React.createElement("text", {
-    x: tx1 - 10,
-    y: y1 + 28,
+    x: lbl1x,
+    y: lbl1y,
     textAnchor: "middle",
+    dominantBaseline: "middle",
     style: {
       fontSize: "13px",
       fontWeight: "bold",
       fill: "#b45309",
       fontFamily: "'Hiragino Maru Gothic ProN',sans-serif"
     }
-  }, angleA, "\xB0"), /*#__PURE__*/React.createElement("text", {
-    x: isDoui ? tx1 - 10 : tx2 + 20,
-    y: y2 - 14,
+  }, angleA, "\xB0"), /*#__PURE__*/React.createElement("path", {
+    d: `M${arc2sx},${arc2sy} A${arcR},${arcR} 0 0,${isDoui ? 1 : 0} ${arc2ex},${arc2ey}`,
+    style: {
+      fill: "rgba(220,38,38,0.08)",
+      stroke: "#dc2626",
+      strokeWidth: "2"
+    }
+  }), /*#__PURE__*/React.createElement("text", {
+    x: lbl2x,
+    y: lbl2y,
     textAnchor: "middle",
+    dominantBaseline: "middle",
     style: {
       fontSize: "14px",
       fontWeight: "900",
@@ -1107,32 +1160,32 @@ function ParallelAngleFigure({
       fontFamily: "'Hiragino Maru Gothic ProN',sans-serif"
     }
   }, "?\xB0"), /*#__PURE__*/React.createElement("text", {
-    x: SW - 30,
+    x: rx + 10,
     y: y1 + 4,
     style: {
-      fontSize: "12px",
+      fontSize: "13px",
       fill: "#6b7280",
       fontFamily: "'Hiragino Maru Gothic ProN',sans-serif"
     }
   }, "\u2113"), /*#__PURE__*/React.createElement("text", {
-    x: SW - 30,
+    x: rx + 10,
     y: y2 + 4,
     style: {
-      fontSize: "12px",
+      fontSize: "13px",
       fill: "#6b7280",
       fontFamily: "'Hiragino Maru Gothic ProN',sans-serif"
     }
   }, "m"), /*#__PURE__*/React.createElement("text", {
     x: SW / 2,
-    y: SH - 10,
+    y: SH - 8,
     textAnchor: "middle",
     style: {
-      fontSize: "11px",
+      fontSize: "12px",
       fill: "#8b5cf6",
       fontWeight: "bold",
       fontFamily: "'Hiragino Maru Gothic ProN',sans-serif"
     }
-  }, angleType));
+  }, angleType, "\u306F\u7B49\u3057\u3044"));
 }
 
 // 直方体
