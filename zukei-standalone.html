@@ -1822,16 +1822,16 @@ function genProblem(diff = "mix") {
     };
   }
 
-  // type === 15: 拡大図・縮小図
-  const w = randInt(3, 8),
-    h = randInt(2, 6);
+  // type === 15: 拡大図・縮小図（必ず割り切れる数値を生成）
   const scales = [2, 3, 4];
   const scale = scales[randInt(0, 2)];
   const isEnlarge = Math.random() < 0.5;
-  const actualScale = isEnlarge ? scale : 1 / scale;
-  const w2 = Math.round(w * actualScale);
-  const h2 = Math.round(h * actualScale);
-  if (w2 <= 0 || h2 <= 0) return genProblem();
+  // 縮小の場合はscaleの倍数のwを選ぶ（割り切れる保証）
+  const w = isEnlarge ? randInt(3, 8) : scale * randInt(2, 5);
+  const h = isEnlarge ? randInt(2, 6) : scale * randInt(1, 4);
+  const w2 = isEnlarge ? w * scale : w / scale;
+  const h2 = isEnlarge ? h * scale : h / scale;
+  if (w2 <= 0 || h2 <= 0) return genProblem(diff);
   return {
     title: isEnlarge ? "拡大図" : "縮小図",
     color: "#6366f1",
@@ -1847,7 +1847,7 @@ function genProblem(diff = "mix") {
       value: w2,
       unit: "cm"
     }],
-    hints: [`🔑 ${isEnlarge ? "拡大" : "縮小"}図はすべての辺が${isEnlarge ? scale + "倍" : "1/" + scale}になる！`, `よこ ＝ ${w} × ${isEnlarge ? scale : "1/" + scale}`, `＝ ${w2}cm ✅`]
+    hints: [`🔑 ${isEnlarge ? "拡大" : "縮小"}図はすべての辺が${isEnlarge ? scale + "倍" : "1/" + scale}になる！`, `よこ ＝ ${w} ${isEnlarge ? "× " + scale : "÷ " + scale}`, `＝ ${w2}cm ✅`]
   };
 }
 
