@@ -10,134 +10,136 @@
     min-height: 100vh;
     background: linear-gradient(160deg, #fef9c3 0%, #dcfce7 50%, #dbeafe 100%);
     font-family: 'Hiragino Maru Gothic ProN', 'Noto Sans JP', sans-serif;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: flex-start;
-    padding: 32px 16px 48px;
+    display: flex; flex-direction: column; align-items: center;
+    justify-content: flex-start; padding: 32px 16px 48px;
   }
-  @keyframes floatUp {
-    from { opacity: 0; transform: translateY(24px); }
-    to   { opacity: 1; transform: translateY(0); }
+  @keyframes floatUp { from{opacity:0;transform:translateY(24px)} to{opacity:1;transform:translateY(0)} }
+  .header { text-align:center; margin-bottom:24px; animation:floatUp 0.5s ease both; }
+  .header .emoji { font-size:56px; display:block; margin-bottom:8px; }
+  .header h1 { font-size:26px; font-weight:900; color:#1e293b; margin-bottom:4px; }
+  .header p  { font-size:14px; color:#64748b; }
+  .section-label {
+    font-size:11px; font-weight:bold; color:#94a3b8;
+    text-transform:uppercase; letter-spacing:0.1em;
+    margin:16px 0 8px; width:100%; max-width:420px;
   }
-  .header { text-align: center; margin-bottom: 36px; animation: floatUp 0.5s ease both; }
-  .header .emoji { font-size: 64px; display: block; margin-bottom: 8px; }
-  .header h1 { font-size: 26px; font-weight: 900; color: #1e293b; margin-bottom: 4px; }
-  .header p  { font-size: 14px; color: #64748b; }
-
-  .grid { display: flex; flex-direction: column; gap: 16px; width: 100%; max-width: 420px; }
-
+  .grid { display:flex; flex-direction:column; gap:10px; width:100%; max-width:420px; }
   .card {
-    background: #fff; border-radius: 20px; padding: 24px 20px;
-    box-shadow: 0 4px 20px rgba(0,0,0,0.09);
-    text-decoration: none; display: flex; align-items: center; gap: 18px;
-    transition: transform 0.15s, box-shadow 0.15s;
-    animation: floatUp 0.5s ease both;
-    border-left: 6px solid transparent;
+    background:#fff; border-radius:16px; padding:16px 14px;
+    box-shadow:0 3px 14px rgba(0,0,0,0.08);
+    text-decoration:none; display:flex; align-items:center; gap:12px;
+    animation:floatUp 0.5s ease both; border-left:5px solid transparent;
   }
-  .card:active { transform: scale(0.97); box-shadow: 0 2px 10px rgba(0,0,0,0.08); }
-  .card-icon {
-    font-size: 44px; flex-shrink: 0; width: 64px; height: 64px;
-    border-radius: 16px; display: flex; align-items: center; justify-content: center;
-  }
-  .card-body { flex: 1; }
-  .card-title { font-size: 18px; font-weight: 900; margin-bottom: 4px; }
-  .card-desc  { font-size: 12px; color: #64748b; line-height: 1.6; }
-  .card-arrow { font-size: 20px; color: #cbd5e1; flex-shrink: 0; }
-
-  .card-wassan   { border-left-color: #ffa94d; }
-  .card-wassan   .card-icon  { background: #fff7ed; }
-  .card-wassan   .card-title { color: #c2410c; }
-
-  .card-sashi    { border-left-color: #4ade80; }
-  .card-sashi    .card-icon  { background: #f0fdf4; }
-  .card-sashi    .card-title { color: #15803d; }
-
-  .card-shoukyo  { border-left-color: #60a5fa; }
-  .card-shoukyo  .card-icon  { background: #eff6ff; }
-  .card-shoukyo  .card-title { color: #1d4ed8; }
-
-  .card-zukei    { border-left-color: #c084fc; }
-  .card-zukei    .card-icon  { background: #fdf4ff; }
-  .card-zukei    .card-title { color: #7e22ce; }
-
-  .card-coming   { border-left-color: #e2e8f0; opacity: 0.55; pointer-events: none; }
-  .card-coming   .card-icon  { background: #f8fafc; }
-  .card-coming   .card-title { color: #94a3b8; }
-
-  .footer {
-    margin-top: 40px; font-size: 12px; color: #94a3b8; text-align: center;
-    animation: floatUp 0.6s ease 0.5s both;
-  }
+  .card:active { transform:scale(0.97); }
+  .card-icon { font-size:32px; flex-shrink:0; width:48px; height:48px; border-radius:12px; display:flex; align-items:center; justify-content:center; }
+  .card-body { flex:1; }
+  .card-title { font-size:15px; font-weight:900; margin-bottom:2px; }
+  .card-desc  { font-size:11px; color:#64748b; line-height:1.5; }
+  .card-arrow { font-size:18px; color:#cbd5e1; flex-shrink:0; }
+  /* 色 */
+  .co { border-left-color:#ffa94d; } .co .card-icon{background:#fff7ed;} .co .card-title{color:#c2410c;}
+  .cg { border-left-color:#4ade80; } .cg .card-icon{background:#f0fdf4;} .cg .card-title{color:#15803d;}
+  .cb { border-left-color:#60a5fa; } .cb .card-icon{background:#eff6ff;} .cb .card-title{color:#1d4ed8;}
+  .cp { border-left-color:#c084fc; } .cp .card-icon{background:#fdf4ff;} .cp .card-title{color:#7e22ce;}
+  .cc { border-left-color:#22d3ee; } .cc .card-icon{background:#ecfeff;} .cc .card-title{color:#0e7490;}
+  .cr { border-left-color:#f87171; } .cr .card-icon{background:#fef2f2;} .cr .card-title{color:#b91c1c;}
+  .ca { border-left-color:#fbbf24; } .ca .card-icon{background:#fffbeb;} .ca .card-title{color:#92400e;}
+  .ce { border-left-color:#34d399; } .ce .card-icon{background:#ecfdf5;} .ce .card-title{color:#065f46;}
+  .cs { border-left-color:#38bdf8; } .cs .card-icon{background:#f0f9ff;} .cs .card-title{color:#075985;}
+  .ci { border-left-color:#818cf8; } .ci .card-icon{background:#eef2ff;} .ci .card-title{color:#3730a3;}
+  .cn { border-left-color:#6366f1; } .cn .card-icon{background:#eff6ff;} .cn .card-title{color:#1e3a8a;}
+  .cv { border-left-color:#a78bfa; } .cv .card-icon{background:#f5f3ff;} .cv .card-title{color:#4c1d95;}
+  .footer { margin-top:28px; font-size:12px; color:#94a3b8; text-align:center; animation:floatUp 0.6s ease 0.4s both; }
 </style>
 </head>
 <body>
-
 <div class="header">
   <span class="emoji">📚</span>
   <h1>算数クイズ</h1>
   <p>やりたい問題を選んでね！</p>
 </div>
 
+<div class="section-label">📐 図形</div>
 <div class="grid">
-
-  <a href="wassan-quiz.html" class="card card-wassan" style="animation-delay:0.1s">
-    <div class="card-icon">✏️</div>
-    <div class="card-body">
-      <div class="card-title">和差算</div>
-      <div class="card-desc">和と差から2つの数を求める問題<br>2数・3数・応用の4タイプ</div>
-    </div>
-    <div class="card-arrow">›</div>
-  </a>
-
-  <a href="sashiatsume-quiz.html" class="card card-sashi" style="animation-delay:0.2s">
-    <div class="card-icon">🧮</div>
-    <div class="card-body">
-      <div class="card-title">差集め算</div>
-      <div class="card-desc">余りと不足から人数を求める問題<br>基本・両余り・両不足・応用の4タイプ</div>
-    </div>
-    <div class="card-arrow">›</div>
-  </a>
-
-  <a href="shoukyo-quiz.html" class="card card-shoukyo" style="animation-delay:0.3s">
-    <div class="card-icon">🔢</div>
-    <div class="card-body">
-      <div class="card-title">消去算</div>
-      <div class="card-desc">2つの条件から未知数を求める問題<br>値段・倍数・重さ・応用の4タイプ</div>
-    </div>
-    <div class="card-arrow">›</div>
-  </a>
-
-  <a href="zukei-standalone.html" class="card card-zukei" style="animation-delay:0.4s">
+  <a href="zukei-standalone.html" class="card cp" style="animation-delay:0.05s">
     <div class="card-icon">📐</div>
-    <div class="card-body">
-      <div class="card-title">図形問題</div>
-      <div class="card-desc">面積・体積・角度・相似・拡大縮小<br>小5〜小6レベル・全16タイプ</div>
-    </div>
+    <div class="card-body"><div class="card-title">図形問題</div><div class="card-desc">面積・体積・角度・相似・拡大縮小（小5〜小6）</div></div>
     <div class="card-arrow">›</div>
   </a>
+</div>
 
-  <div class="card card-coming" style="animation-delay:0.5s">
-    <div class="card-icon">🔒</div>
-    <div class="card-body">
-      <div class="card-title">つるかめ算（準備中）</div>
-      <div class="card-desc">もうすぐ追加予定！</div>
-    </div>
+<div class="section-label">🔢 文章題（特殊算）</div>
+<div class="grid">
+  <a href="wassan-quiz.html" class="card co" style="animation-delay:0.10s">
+    <div class="card-icon">✏️</div>
+    <div class="card-body"><div class="card-title">和差算</div><div class="card-desc">和と差から2つの数を求める</div></div>
     <div class="card-arrow">›</div>
-  </div>
-
-  <div class="card card-coming" style="animation-delay:0.6s">
-    <div class="card-icon">🔒</div>
-    <div class="card-body">
-      <div class="card-title">旅人算（準備中）</div>
-      <div class="card-desc">もうすぐ追加予定！</div>
-    </div>
+  </a>
+  <a href="sashiatsume-quiz.html" class="card cg" style="animation-delay:0.12s">
+    <div class="card-icon">🧮</div>
+    <div class="card-body"><div class="card-title">差集め算</div><div class="card-desc">余りと不足から人数を求める</div></div>
     <div class="card-arrow">›</div>
-  </div>
+  </a>
+  <a href="kafusoku-quiz.html" class="card cc" style="animation-delay:0.14s">
+    <div class="card-icon">📦</div>
+    <div class="card-body"><div class="card-title">過不足算</div><div class="card-desc">配り方の余りと不足から個数・人数を求める</div></div>
+    <div class="card-arrow">›</div>
+  </a>
+  <a href="shoukyo-quiz.html" class="card cb" style="animation-delay:0.16s">
+    <div class="card-icon">🔢</div>
+    <div class="card-body"><div class="card-title">消去算</div><div class="card-desc">2つの条件から未知数を求める</div></div>
+    <div class="card-arrow">›</div>
+  </a>
+  <a href="baisuu-quiz.html" class="card cr" style="animation-delay:0.18s">
+    <div class="card-icon">✖️</div>
+    <div class="card-body"><div class="card-title">倍数算</div><div class="card-desc">倍数関係から2つ・3つの数を求める</div></div>
+    <div class="card-arrow">›</div>
+  </a>
+  <a href="soutou-quiz.html" class="card ca" style="animation-delay:0.20s">
+    <div class="card-icon">🍰</div>
+    <div class="card-body"><div class="card-title">相当算</div><div class="card-desc">分数の関係から全体や部分を求める</div></div>
+    <div class="card-arrow">›</div>
+  </a>
+  <a href="nobe-quiz.html" class="card cv" style="animation-delay:0.22s">
+    <div class="card-icon">📊</div>
+    <div class="card-body"><div class="card-title">のべ算・平均算</div><div class="card-desc">仕事量・人数・平均点の問題</div></div>
+    <div class="card-arrow">›</div>
+  </a>
+  <a href="kisoku-quiz.html" class="card cs" style="animation-delay:0.24s">
+    <div class="card-icon">🔍</div>
+    <div class="card-body"><div class="card-title">規則性</div><div class="card-desc">数列・図形の規則・周期算</div></div>
+    <div class="card-arrow">›</div>
+  </a>
+</div>
 
+<div class="section-label">🚂 速さの文章題</div>
+<div class="grid">
+  <a href="tabibito-quiz.html" class="card ce" style="animation-delay:0.26s">
+    <div class="card-icon">🚶</div>
+    <div class="card-body"><div class="card-title">旅人算</div><div class="card-desc">向かい合い・追いかけ・池の周り</div></div>
+    <div class="card-arrow">›</div>
+  </a>
+  <a href="tsuuka-quiz.html" class="card ci" style="animation-delay:0.28s">
+    <div class="card-icon">🚄</div>
+    <div class="card-body"><div class="card-title">通過算</div><div class="card-desc">電車のトンネル・電柱・すれ違い</div></div>
+    <div class="card-arrow">›</div>
+  </a>
+  <a href="ryuusui-quiz.html" class="card cn" style="animation-delay:0.30s">
+    <div class="card-icon">🚤</div>
+    <div class="card-body"><div class="card-title">流水算</div><div class="card-desc">川の流れを考えた速さの問題</div></div>
+    <div class="card-arrow">›</div>
+  </a>
+</div>
+
+<div class="section-label">🧩 思考力</div>
+<div class="grid">
+  <a href="suiri-quiz.html" class="card cp" style="animation-delay:0.32s">
+    <div class="card-icon">🧩</div>
+    <div class="card-body"><div class="card-title">推理と試行</div><div class="card-desc">場合の数・確率・論理パズル</div></div>
+    <div class="card-arrow">›</div>
+  </a>
 </div>
 
 <div class="footer">問題はランダム生成・何回でも練習できるよ 🌟</div>
-
 </body>
 </html>
