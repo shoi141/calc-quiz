@@ -9,6 +9,7 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.2/babel.min.js"></script>
 <script src="common.js"></script>
+<script src="review-common.js"></script>
 <style>
   body { background: #fdf6e3; }
   .cursor-blink { color: #339af0; }
@@ -18,15 +19,17 @@
 <div id="root"></div>
 <script type="text/babel">
 const { useState, useCallback, useEffect } = React;
+const SUBJECT_KEY = "calc";
 const STORAGE_KEY = "wassan_best_streak";
 
 // ─── 問題生成 ──────────────────────────────────────────────
-function genProblem() {
-  const type = Math.floor(Math.random() * 4);
+function genProblemOfType(t){return genProblem(t);}
+function genProblem(forceType) {
+  const type = forceType !== undefined ? forceType : Math.floor(Math.random() * 4);
   if (type === 0) {
     const small = randInt(15,80), diff = randInt(4,40)*2;
     const large = small+diff, sum = large+small;
-    return {
+    return {_genType:type,
       title:"和差算①", color:"#ff922b",
       text:`2つの数があります。\n和（合計）は **${sum}**、差は **${diff}** です。\n2つの数をそれぞれ求めなさい。`,
       answers:[{label:"大きい数",value:large},{label:"小さい数",value:small}],
@@ -43,7 +46,7 @@ function genProblem() {
     const names=[["A組","B組"],["赤チーム","白チーム"],["姉","妹"],["兄","弟"]];
     const [n1,n2]=names[randInt(0,3)];
     const b=randInt(15,70), diff=randInt(3,30)*2, a=b+diff, sum=a+b;
-    return {
+    return {_genType:type,
       title:"和差算②", color:"#339af0",
       text:`${n1} と ${n2} の合計は **${sum}**、\n${n1} は ${n2} より **${diff}** 多いです。\n${n1} と ${n2} をそれぞれ求めなさい。`,
       answers:[{label:n1,value:a},{label:n2,value:b}],
@@ -59,7 +62,7 @@ function genProblem() {
   if (type === 2) {
     const c=randInt(10,35), d1=randInt(4,20)*2, d2=randInt(4,20)*2;
     const b=c+d1, a=b+d2, sum=a+b+c;
-    return {
+    return {_genType:type,
       title:"和差算③（3つの数）", color:"#51cf66",
       text:`3つの数 A、B、C があります。\n合計は **${sum}**\nA は B より **${d2}** 多く、\nB は C より **${d1}** 多いです。\nA、B、C を求めなさい。`,
       answers:[{label:"A",value:a},{label:"B",value:b},{label:"C",value:c}],
@@ -74,8 +77,8 @@ function genProblem() {
   }
   const avg=randInt(20,60), d1=randInt(3,15)*2, d2=randInt(3,15)*2;
   const b=avg, a=avg+d1, c=avg-d2, sum=a+b+c;
-  return {
-    title:"和差算④（応用）", color:"#cc5de8",
+  return {_genType:type,
+      title:"和差算④（応用）", color:"#cc5de8",
     text:`3つの数の合計は **${sum}** です。\n真ん中の数は最小の数より **${d2}** 多く、\n最大の数は真ん中の数より **${d1}** 多いです。\n3つの数を求めなさい。`,
     answers:[{label:"最大の数",value:a},{label:"真ん中の数",value:b},{label:"最小の数",value:c}],
     hints:[
@@ -133,14 +136,18 @@ function App() {
   const [streak,setStreak]         = useState(0);
   const [best,setBest]             = useState(0);
   const [confirmOpen,setConfirmOpen] = useState(false);
+  const [reviewMode,setReviewMode] = useState(false);
+  const [reviewBank,setReviewBank] = useState([]);
 
   useEffect(()=>{
     try{const s=localStorage.getItem(STORAGE_KEY);if(s)setBest(parseInt(s)||0);}catch(_){}
+    setReviewBank(reviewGetAll(SUBJECT_KEY));
   },[]);
   const saveBest=v=>{try{localStorage.setItem(STORAGE_KEY,String(v));}catch(_){}};
 
   const startQuiz=()=>{
-    setProblems(Array.from({length:totalQ},()=>genProblem()));
+    const bank=reviewGetAll(SUBJECT_KEY);setReviewBank(bank);
+    setProblems(reviewMode&&bank.length>0?reviewGetProblems(SUBJECT_KEY,genProblemOfType).slice(0,totalQ):Array.from({length:totalQ},()=>genProblem()));
     setCurrent(0);setScore(0);setStreak(0);
     setScratch("");setAnswerVals({});setFocused("scratch");
     setChecked(false);setCorrect({});setHintIdx(-1);setCeleb(false);
@@ -182,8 +189,8 @@ function App() {
     if(Object.values(r).every(Boolean)){
       setScore(s=>s+1);const ns=streak+1;setStreak(ns);
       if(ns>best){setBest(ns);saveBest(ns);}
-      setCeleb(true);setTimeout(()=>setCeleb(false),2000);
-    }else{setStreak(0);}
+      setCeleb(true);setTimeout(()=>setCeleb(false),2000);reviewMarkCorrect(SUBJECT_KEY,problem);setReviewBank(reviewGetAll(SUBJECT_KEY));;reviewMarkCorrect(SUBJECT_KEY,problem);setReviewBank(reviewGetAll(SUBJECT_KEY));
+    }else{setStreak(0);reviewSave(SUBJECT_KEY,problem);setReviewBank(reviewGetAll(SUBJECT_KEY));}
   };
 
   const nextQuestion=()=>{
@@ -201,6 +208,35 @@ function App() {
         <div className="setup-emoji">✏️</div>
         <h1 className="setup-title" style={{color:"#212529"}}>和差算 練習</h1>
         <p className="setup-sub">小学校高学年レベル</p>
+        {best > 0 && reviewBank.length === 0 && (
+          <div style={{marginBottom:"16px",padding:"12px 16px",borderRadius:"14px",
+            background:"#f0fdf4",border:"2px solid #4ade80",
+            display:"flex",alignItems:"center",gap:"10px"}}>
+            <span style={{fontSize:"22px"}}>🎓</span>
+            <div>
+              <div style={{fontWeight:"900",fontSize:"14px",color:"#166534"}}>この教科をマスターしています！</div>
+              <div style={{fontSize:"11px",color:"#16a34a",marginTop:"2px"}}>間違えた問題が溜まるとここに復習ボタンが表示されます。</div>
+            </div>
+          </div>
+        )}
+                {reviewBank.length > 0 && (
+          <div style={{marginBottom:"16px"}}>
+            <button onClick={()=>setReviewMode(r=>!r)}
+              style={{width:"100%",padding:"12px 16px",borderRadius:"14px",cursor:"pointer",
+                border:reviewMode?"2px solid #ef4444":"2px solid #e5e7eb",
+                background:reviewMode?"#fef2f2":"#f9fafb",
+                display:"flex",alignItems:"center",justifyContent:"space-between",fontFamily:"inherit"}}>
+              <span style={{fontWeight:"900",fontSize:"14px",color:reviewMode?"#b91c1c":"#374151"}}>
+                📚 復習モード
+              </span>
+              <span style={{background:reviewMode?"#ef4444":"#6b7280",color:"#fff",
+                borderRadius:"99px",padding:"2px 10px",fontSize:"12px",fontWeight:"bold"}}>
+                {reviewBank.length}問
+              </span>
+            </button>
+            {reviewMode && <div style={{fontSize:"11px",color:"#ef4444",textAlign:"center",marginTop:"4px",fontWeight:"bold"}}>✅ 5回正解で復習リストから卒業！</div>}
+          </div>
+        )}
         {best>0&&<div className="best-badge" style={{background:"#fff9db",border:"1.5px solid #ffd43b",color:"#5c3d02"}}>🏆 最高連続記録：<strong>{best}問</strong></div>}
         <div className="qcount-section">何問やる？</div>
         <div className="qcount-grid">

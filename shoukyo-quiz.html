@@ -9,6 +9,7 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.2/babel.min.js"></script>
 <script src="common.js"></script>
+<script src="review-common.js"></script>
 <style>
   body { background: #eff6ff; }
   .cursor-blink { color: #3b82f6; }
@@ -138,8 +139,9 @@ function HintItem({ hint, faded }) {
 }
 
 // ─── 問題生成 ──────────────────────────────────────────────
-function genProblem() {
-  const type = Math.floor(Math.random() * 4);
+function genProblemOfType(t){return genProblem(t);}
+function genProblem(forceType) {
+  const type = forceType !== undefined ? forceType : Math.floor(Math.random() * 4);
 
   if (type === 0) {
     // 基本型：値段
@@ -155,7 +157,7 @@ function genProblem() {
     if (diffNb<=0||diffS<=0) return genProblem();
     const foods=[["りんご","みかん"],["ケーキ","プリン"],["パン","クッキー"],["チョコ","グミ"]];
     const [f1,f2]=foods[randInt(0,3)];
-    return {
+    return {_genType:type,
       title:"消去算①", color:"#3b82f6",
       text:`${f1}${na1}個と${f2}${nb1}個で **${sum1}円**\n${f1}${na2}個と${f2}${nb2}個で **${sum2}円**\n${f1}1個と${f2}1個の値段をそれぞれ求めなさい。`,
       answers:[{label:`${f1}1個`,value:a,unit:"円"},{label:`${f2}1個`,value:b,unit:"円"}],
@@ -195,7 +197,7 @@ function genProblem() {
     if (diffM===0) return genProblem();
     const names=[["A","B"],["兄","弟"],["姉","妹"],["赤","青"]];
     const [n1,n2]=names[randInt(0,3)];
-    return {
+    return {_genType:type,
       title:"消去算②", color:"#8b5cf6",
       text:`${n1}の${k1}倍と${n2}の${m1}倍の合計は **${sum1}**\n${n1}の${k2}倍と${n2}の${m2}倍の合計は **${sum2}**\n${n1}と${n2}をそれぞれ求めなさい。`,
       answers:[{label:n1,value:a,unit:""},{label:n2,value:b,unit:""}],
@@ -234,7 +236,7 @@ function genProblem() {
     if (diffNb<=0||diffW<=0) return genProblem();
     const things=[["本","ノート"],["缶","ビン"],["積み木","ブロック"],["りんご","みかん"]];
     const [i1,i2]=things[randInt(0,3)];
-    return {
+    return {_genType:type,
       title:"消去算③（重さ）", color:"#ec4899",
       text:`${i1}${na1}個と${i2}${nb1}個の重さは **${w1}g**\n${i1}${na2}個と${i2}${nb2}個の重さは **${w2}g**\n${i1}1個と${i2}1個の重さをそれぞれ求めなさい。`,
       answers:[{label:`${i1}1個`,value:a,unit:"g"},{label:`${i2}1個`,value:b,unit:"g"}],
@@ -268,8 +270,8 @@ function genProblem() {
   const allB=b*totalCount, diffPrice=a-b;
   const calcQa=(total-allB)/diffPrice;
   if (calcQa!==qa||calcQa<=0) return genProblem();
-  return {
-    title:"消去算④（応用）", color:"#f59e0b",
+  return {_genType:type,
+      title:"消去算④（応用）", color:"#f59e0b",
     text:`${s1}と${s2}を合わせて **${totalCount}個** 買い、\n合計金額は **${total}円** でした。\n${s1}は **${a}円**、${s2}は **${b}円** のとき、\nそれぞれ何個買いましたか？`,
     answers:[{label:`${s1}の個数`,value:qa,unit:"個"},{label:`${s2}の個数`,value:qb,unit:"個"}],
     hints:[
@@ -318,6 +320,7 @@ function ScratchDisplay({ scratch, focused }) {
   );
 }
 
+const SUBJECT_KEY = "calc";
 const STORAGE_KEY="shoukyo_best_streak";
 
 // ─── アプリ ────────────────────────────────────────────────
@@ -338,14 +341,18 @@ function App() {
   const [streak,setStreak]         = useState(0);
   const [best,setBest]             = useState(0);
   const [confirmOpen,setConfirmOpen] = useState(false);
+  const [reviewMode,setReviewMode] = useState(false);
+  const [reviewBank,setReviewBank] = useState([]);
 
   useEffect(()=>{
     try{const s=localStorage.getItem(STORAGE_KEY);if(s)setBest(parseInt(s)||0);}catch(_){}
+    setReviewBank(reviewGetAll(SUBJECT_KEY));
   },[]);
   const saveBest=v=>{try{localStorage.setItem(STORAGE_KEY,String(v));}catch(_){}};
 
   const startQuiz=()=>{
-    setProblems(Array.from({length:totalQ},()=>genProblem()));
+    const bank=reviewGetAll(SUBJECT_KEY);setReviewBank(bank);
+    setProblems(reviewMode&&bank.length>0?reviewGetProblems(SUBJECT_KEY,genProblemOfType).slice(0,totalQ):Array.from({length:totalQ},()=>genProblem()));
     setCurrent(0);setScore(0);setStreak(0);
     setScratch("");setAnswerVals({});setFocused("scratch");
     setChecked(false);setCorrect({});setHintIdx(-1);setCeleb(false);
@@ -388,8 +395,8 @@ function App() {
       setScore(s=>s+1);
       const ns=streak+1;setStreak(ns);
       if(ns>best){setBest(ns);saveBest(ns);}
-      setCeleb(true);setTimeout(()=>setCeleb(false),2000);
-    } else {setStreak(0);}
+      setCeleb(true);setTimeout(()=>setCeleb(false),2000);reviewMarkCorrect(SUBJECT_KEY,problem);setReviewBank(reviewGetAll(SUBJECT_KEY));
+    } else {setStreak(0);reviewSave(SUBJECT_KEY,problem);setReviewBank(reviewGetAll(SUBJECT_KEY));}
   };
 
   const nextQuestion=()=>{
@@ -408,6 +415,30 @@ function App() {
         <div style={{fontSize:"56px",marginBottom:"8px"}}>🔢</div>
         <h1 style={{fontSize:"24px",fontWeight:"900",color:"#1e3a8a",margin:"0 0 4px"}}>消去算 練習</h1>
         <p style={{color:"#6b7280",fontSize:"13px",marginBottom:"20px"}}>小学校高学年レベル</p>
+                {best > 0 && reviewBank.length === 0 && (
+          <div style={{marginBottom:"16px",padding:"12px 16px",borderRadius:"14px",
+            background:"#f0fdf4",border:"2px solid #4ade80",
+            display:"flex",alignItems:"center",gap:"10px"}}>
+            <span style={{fontSize:"22px"}}>🎓</span>
+            <div>
+              <div style={{fontWeight:"900",fontSize:"14px",color:"#166534"}}>この教科をマスターしています！</div>
+              <div style={{fontSize:"11px",color:"#4ade80",marginTop:"2px"}}>復習バンクは空です。間違えた問題が溜まったらここに表示されます。</div>
+            </div>
+          </div>
+        )}
+        {reviewBank.length > 0 && (
+          <div style={{marginBottom:"16px"}}>
+            <button onClick={()=>setReviewMode(r=>!r)}
+              style={{width:"100%",padding:"12px 16px",borderRadius:"14px",cursor:"pointer",
+                border:reviewMode?"2px solid #ef4444":"2px solid #e5e7eb",
+                background:reviewMode?"#fef2f2":"#f9fafb",
+                display:"flex",alignItems:"center",justifyContent:"space-between",fontFamily:"inherit"}}>
+              <span style={{fontWeight:"900",fontSize:"14px",color:reviewMode?"#b91c1c":"#374151"}}>📚 復習モード</span>
+              <span style={{background:reviewMode?"#ef4444":"#6b7280",color:"#fff",borderRadius:"99px",padding:"2px 10px",fontSize:"12px",fontWeight:"bold"}}>{reviewBank.length}問</span>
+            </button>
+            {reviewMode && <div style={{fontSize:"11px",color:"#ef4444",textAlign:"center",marginTop:"4px",fontWeight:"bold"}}>✅ 5回正解で復習リストから卒業！</div>}
+          </div>
+        )}
         {best>0&&<div style={{background:"#dbeafe",border:"1.5px solid #93c5fd",borderRadius:"12px",padding:"10px 16px",fontSize:"15px",color:"#1e3a8a",marginBottom:"20px",display:"inline-block"}}>🏆 最高連続記録：<strong>{best}問</strong></div>}
         <div style={{fontSize:"13px",fontWeight:"bold",color:"#6b7280",marginBottom:"10px",textTransform:"uppercase",letterSpacing:"0.05em"}}>何問やる？</div>
         <div style={{display:"flex",gap:"10px",justifyContent:"center",marginBottom:"24px"}}>

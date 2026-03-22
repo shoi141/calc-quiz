@@ -9,6 +9,7 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.2/babel.min.js"></script>
 <script src="common.js"></script>
+<script src="review-common.js"></script>
 <style>
   body { background: #f5f3ff; }
   .cursor-blink { color: #7c3aed; }
@@ -18,18 +19,20 @@
 <div id="root"></div>
 <script type="text/babel">
 const { useState, useCallback, useEffect } = React;
+const SUBJECT_KEY = "calc";
 const STORAGE_KEY = "bumpai_best";
 
 
-function genProblem() {
-  const type = Math.floor(Math.random() * 4);
+function genProblemOfType(t){return genProblem(t);}
+function genProblem(forceType) {
+  const type = forceType !== undefined ? forceType : Math.floor(Math.random() * 4);
 
   if (type === 0) {
     // 比で分ける（2人）
     const a = randInt(1,5), b = randInt(1,5);
     const unit = randInt(20,80) * (a+b);
     const ga = unit*a/(a+b), gb = unit*b/(a+b);
-    return {
+    return {_genType:type,
       title: "分配算①", color: "#7c3aed",
       text: ` **${unit}個** のあめを AとBに **${a}：${b}** の比で分けます。
 AとBはそれぞれ何個もらいますか？`,
@@ -50,7 +53,7 @@ AとBはそれぞれ何個もらいますか？`,
     const diff_val = randInt(1,5) * diff_ratio * 10;
     const unit = diff_val / diff_ratio;
     const ga = unit*a, gb = unit*b;
-    return {
+    return {_genType:type,
       title: "分配算②", color: "#6d28d9",
       text: `AとBを **${a}：${b}** の比で分けます。
 AはBより **${diff_val}** 多い。
@@ -71,7 +74,7 @@ AとBはそれぞれいくつですか？`,
     const total = randInt(5,15)*(a+b+c);
     const ga=total*a/(a+b+c), gb=total*b/(a+b+c), gc=total*c/(a+b+c);
     if(!Number.isInteger(ga)||!Number.isInteger(gb)||!Number.isInteger(gc)) return genProblem();
-    return {
+    return {_genType:type,
       title: "分配算③（3人）", color: "#5b21b6",
       text: ` **${total}円** をA、B、Cに **${a}：${b}：${c}** の比で分けます。
 それぞれいくら受け取りますか？`,
@@ -95,8 +98,8 @@ AとBはそれぞれいくつですか？`,
   const gb2=ga2*ratio_b/ratio_a;
   if(!Number.isInteger(gb2)) return genProblem();
   const total2=ga2+gb2;
-  return {
-    title: "分配算④（応用）", color: "#4c1d95",
+  return {_genType:type,
+      title: "分配算④（応用）", color: "#4c1d95",
     text: `AとBを **${ratio_a}：${ratio_b}** の比で分けました。
 Aは **${ga2}** でした。
 Bはいくつですか？また合計はいくつですか？`,
@@ -154,6 +157,8 @@ function App() {
   const [streak, setStreak]           = useState(0);
   const [best, setBest]               = useState(0);
   const [confirmOpen, setConfirmOpen] = useState(false);
+  const [reviewMode, setReviewMode] = useState(false);
+  const [reviewBank, setReviewBank] = useState([]);
 
   useEffect(() => {
     try { const s = localStorage.getItem(STORAGE_KEY); if (s) setBest(parseInt(s) || 0); } catch(_) {}
@@ -161,7 +166,8 @@ function App() {
   const saveBest = v => { try { localStorage.setItem(STORAGE_KEY, String(v)); } catch(_) {} };
 
   const startQuiz = () => {
-    setProblems(Array.from({ length: totalQ }, () => genProblem()));
+    const bank=reviewGetAll(SUBJECT_KEY);setReviewBank(bank);
+    setProblems(reviewMode&&bank.length>0?reviewGetProblems(SUBJECT_KEY,genProblemOfType).slice(0,totalQ):Array.from({length:totalQ},()=>genProblem()));
     setCurrent(0); setScore(0); setStreak(0);
     setScratch(""); setAnswerVals({}); setFocused("scratch");
     setChecked(false); setCorrect({}); setHintIdx(-1); setCeleb(false); setConfirmOpen(false);
@@ -206,8 +212,8 @@ function App() {
     if (Object.values(r).every(Boolean)) {
       setScore(s => s + 1); const ns = streak + 1; setStreak(ns);
       if (ns > best) { setBest(ns); saveBest(ns); }
-      setCeleb(true); setTimeout(() => setCeleb(false), 2000);
-    } else { setStreak(0); }
+      setCeleb(true); setTimeout(() => setCeleb(false), 2000); reviewMarkCorrect(SUBJECT_KEY,problem); setReviewBank(reviewGetAll(SUBJECT_KEY));
+    } else { setStreak(0); reviewSave(SUBJECT_KEY, problem); setReviewBank(reviewGetAll(SUBJECT_KEY)); }
   };
 
   const nextQuestion = () => {
@@ -228,6 +234,35 @@ function App() {
         <div className="setup-emoji">📝</div>
         <h1 className="setup-title">{"分配算 練習"}</h1>
         <p className="setup-sub">小学校高学年レベル</p>
+        {best > 0 && reviewBank.length === 0 && (
+          <div style={{marginBottom:"16px",padding:"12px 16px",borderRadius:"14px",
+            background:"#f0fdf4",border:"2px solid #4ade80",
+            display:"flex",alignItems:"center",gap:"10px"}}>
+            <span style={{fontSize:"22px"}}>🎓</span>
+            <div>
+              <div style={{fontWeight:"900",fontSize:"14px",color:"#166534"}}>この教科をマスターしています！</div>
+              <div style={{fontSize:"11px",color:"#16a34a",marginTop:"2px"}}>間違えた問題が溜まるとここに復習ボタンが表示されます。</div>
+            </div>
+          </div>
+        )}
+                {reviewBank.length > 0 && (
+          <div style={{marginBottom:"16px"}}>
+            <button onClick={()=>setReviewMode(r=>!r)}
+              style={{width:"100%",padding:"12px 16px",borderRadius:"14px",cursor:"pointer",
+                border:reviewMode?"2px solid #ef4444":"2px solid #e5e7eb",
+                background:reviewMode?"#fef2f2":"#f9fafb",
+                display:"flex",alignItems:"center",justifyContent:"space-between",fontFamily:"inherit"}}>
+              <span style={{fontWeight:"900",fontSize:"14px",color:reviewMode?"#b91c1c":"#374151"}}>
+                📚 復習モード
+              </span>
+              <span style={{background:reviewMode?"#ef4444":"#6b7280",color:"#fff",
+                borderRadius:"99px",padding:"2px 10px",fontSize:"12px",fontWeight:"bold"}}>
+                {reviewBank.length}問
+              </span>
+            </button>
+            {reviewMode && <div style={{fontSize:"11px",color:"#ef4444",textAlign:"center",marginTop:"4px",fontWeight:"bold"}}>✅ 5回正解で復習リストから卒業！</div>}
+          </div>
+        )}
         {best > 0 && <div className="best-badge" style={{ background:"rgba(0,0,0,0.05)", border:"1.5px solid rgba(0,0,0,0.1)" }}>🏆 最高連続記録：<strong>{best}問</strong></div>}
         <div className="qcount-section">何問やる？</div>
         <div className="qcount-grid">
