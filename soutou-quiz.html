@@ -9,7 +9,125 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.2/babel.min.js"></script>
 <script src="common.js"></script>
-<script src="review-common.js"></script>
+<script>
+// ── 復習バンク共通ユーティリティ ─────────────────────────────
+// 正解5回で復習バンクから削除（反復記憶方式）
+// 計算問題はタイプIDのみ保存 → 復習時に数字を再生成
+
+const REVIEW_CORRECT_NEEDED = 5;
+
+function _reviewId(problem) {
+  return (problem.title + "|" + problem.question).slice(0, 60);
+}
+
+function reviewGetAll(subjectKey) {
+  try {
+    const raw = localStorage.getItem("review_" + subjectKey);
+    return raw ? JSON.parse(raw) : [];
+  } catch(_) { return []; }
+}
+
+function _reviewSaveAll(subjectKey, bank) {
+  try {
+    localStorage.setItem("review_" + subjectKey, JSON.stringify(bank));
+  } catch(_) {}
+}
+
+// 間違えたとき保存
+// _genType があるなら（動的生成問題）タイプ番号だけ保存
+function reviewSave(subjectKey, problem) {
+  try {
+    const bank = reviewGetAll(subjectKey);
+    const id = _reviewId(problem);
+    const existing = bank.find(p => p._id === id);
+    if (existing) {
+      existing._missCount = (existing._missCount || 0) + 1;
+      existing._correctCount = 0;
+    } else {
+      // 動的生成問題（_genType あり）はタイプ番号だけ保存
+      if (problem._genType !== undefined) {
+        bank.push({
+          _id: id,
+          _savedAt: Date.now(),
+          _missCount: 1,
+          _correctCount: 0,
+          _genType: problem._genType,   // ← タイプ番号のみ
+          _isDynamic: true,
+          title: problem.title,         // 表示用
+          diff: problem.diff || "shogaku",
+        });
+      } else {
+        // 静的問題（○×・選択・記述）はそのまま保存
+        const { figure, ...saveable } = problem;
+        bank.push({
+          ...saveable,
+          _id: id,
+          _savedAt: Date.now(),
+          _missCount: 1,
+          _correctCount: 0,
+          _isDynamic: false,
+        });
+      }
+    }
+    _reviewSaveAll(subjectKey, bank);
+  } catch(_) {}
+}
+
+// 正解時：correctCount+1、5回で卒業。trueなら卒業
+function reviewMarkCorrect(subjectKey, problem) {
+  try {
+    const bank = reviewGetAll(subjectKey);
+    const id = _reviewId(problem);
+    const idx = bank.findIndex(p => p._id === id);
+    if (idx === -1) return false;
+    bank[idx]._correctCount = (bank[idx]._correctCount || 0) + 1;
+    const graduated = bank[idx]._correctCount >= REVIEW_CORRECT_NEEDED;
+    if (graduated) bank.splice(idx, 1);
+    _reviewSaveAll(subjectKey, bank);
+    return graduated;
+  } catch(_) { return false; }
+}
+
+// 復習バンクから問題リストを取得
+// genFn: (type) => problem  動的問題の再生成関数
+function reviewGetProblems(subjectKey, genFn) {
+  const bank = reviewGetAll(subjectKey);
+  return bank.map(entry => {
+    if (entry._isDynamic && genFn) {
+      // タイプ番号から新しい問題を生成（数字はランダム）
+      try {
+        const fresh = genFn(entry._genType);
+        if (fresh) {
+          return {
+            ...fresh,
+            _id: entry._id,           // IDは元のものを維持（正解時の削除に使う）
+            _missCount: entry._missCount,
+            _correctCount: entry._correctCount,
+          };
+        }
+      } catch(_) {}
+    }
+    return entry; // 静的問題はそのまま
+  }).filter(Boolean);
+}
+
+function reviewCount(subjectKey) {
+  return reviewGetAll(subjectKey).length;
+}
+
+function reviewClear(subjectKey) {
+  try { localStorage.removeItem("review_" + subjectKey); } catch(_) {}
+}
+
+function reviewGetProgress(subjectKey, problem) {
+  try {
+    const bank = reviewGetAll(subjectKey);
+    const found = bank.find(p => p._id === _reviewId(problem));
+    return found ? { correct: found._correctCount || 0, needed: REVIEW_CORRECT_NEEDED } : null;
+  } catch(_) { return null; }
+}
+
+</script>
 <style>
   body { background: #fffbeb; }
   .cursor-blink { color: #d97706; }
