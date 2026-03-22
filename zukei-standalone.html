@@ -372,6 +372,41 @@ const {
   useCallback,
   useEffect
 } = React;
+
+// ── 復習バンク（zukei専用インライン版）──────────────────────
+const SUBJECT_KEY = "calc";
+const REVIEW_CORRECT_NEEDED = 5;
+function _reviewId(p){ return (p.title+"|"+(p._genType||p.title)).slice(0,60); }
+function reviewGetAll(k){ try{ const r=localStorage.getItem("review_"+k); return r?JSON.parse(r):[]; }catch(_){ return []; } }
+function _reviewSaveAll(k,b){ try{ localStorage.setItem("review_"+k,JSON.stringify(b)); }catch(_){} }
+function reviewSave(k,p){
+  try{
+    const bank=reviewGetAll(k), id=_reviewId(p);
+    const ex=bank.find(x=>x._id===id);
+    if(ex){ ex._missCount=(ex._missCount||0)+1; ex._correctCount=0; }
+    else{ const {figure,...s}=p; bank.push({...s,_id:id,_savedAt:Date.now(),_missCount:1,_correctCount:0,_isDynamic:true,_genType:p._genType}); }
+    _reviewSaveAll(k,bank);
+  }catch(_){}
+}
+function reviewMarkCorrect(k,p){
+  try{
+    const bank=reviewGetAll(k), id=_reviewId(p), idx=bank.findIndex(x=>x._id===id);
+    if(idx===-1) return false;
+    bank[idx]._correctCount=(bank[idx]._correctCount||0)+1;
+    const grad=bank[idx]._correctCount>=REVIEW_CORRECT_NEEDED;
+    if(grad) bank.splice(idx,1);
+    _reviewSaveAll(k,bank); return grad;
+  }catch(_){ return false; }
+}
+function reviewGetProblems(k, genFn){
+  return reviewGetAll(k).map(entry=>{
+    if(entry._isDynamic && genFn && entry._genType!==undefined){
+      try{ const f=genFn(entry._genType); if(f) return {...f,_id:entry._id,_missCount:entry._missCount,_correctCount:entry._correctCount}; }catch(_){}
+    }
+    return entry;
+  }).filter(Boolean);
+}
+
 const STORAGE_KEY = "zukei_best_streak";
 
 // ─── SVG図形コンポーネント ──────────────────────────────────
@@ -1957,11 +1992,14 @@ function App() {
   const [streak, setStreak] = useState(0);
   const [best, setBest] = useState(0);
   const [confirmOpen, setConfirmOpen] = useState(false);
+  const [reviewMode, setReviewMode] = useState(false);
+  const [reviewBank, setReviewBank] = useState([]);
   useEffect(() => {
     try {
       const s = localStorage.getItem(STORAGE_KEY);
       if (s) setBest(parseInt(s) || 0);
     } catch (_) {}
+    setReviewBank(reviewGetAll(SUBJECT_KEY));
   }, []);
   const saveBest = v => {
     try {
@@ -1969,9 +2007,10 @@ function App() {
     } catch (_) {}
   };
   const startQuiz = () => {
-    setProblems(Array.from({
-      length: totalQ
-    }, () => genProblem(diff)));
+    const _bank=reviewGetAll(SUBJECT_KEY);setReviewBank(_bank);
+    setProblems(reviewMode&&_bank.length>0
+      ?reviewGetProblems(SUBJECT_KEY,t=>genProblem(t<8?'easy':'hard')).slice(0,totalQ)
+      :Array.from({length:totalQ},()=>genProblem(diff)));
     setCurrent(0);
     setScore(0);
     setStreak(0);
@@ -2047,12 +2086,16 @@ function App() {
       }
       setCeleb(true);
       setTimeout(() => setCeleb(false), 2000);
+      reviewMarkCorrect(SUBJECT_KEY, problem);
+      setReviewBank(reviewGetAll(SUBJECT_KEY));
     } else {
       setStreak(0);
+      reviewSave(SUBJECT_KEY, problem);
+      setReviewBank(reviewGetAll(SUBJECT_KEY));
     }
   };
   const nextQuestion = () => {
-    if (current + 1 >= totalQ) {
+    if (current + 1 >= problems.length) {
       setMode("result");
       return;
     }
@@ -2084,7 +2127,17 @@ function App() {
     }
   }, "\u56F3\u5F62\u554F\u984C \u7DF4\u7FD2"), /*#__PURE__*/React.createElement("p", {
     className: "setup-sub"
-  }, "\u9762\u7A4D\u30FB\u4F53\u7A4D\u30FB\u89D2\u5EA6\u30FB\u76F8\u4F3C\uFF08\u5C0F\u5B66\u6821\u9AD8\u5B66\u5E74\uFF09"), best > 0 && /*#__PURE__*/React.createElement("div", {
+  }, "\u9762\u7A4D\u30FB\u4F53\u7A4D\u30FB\u89D2\u5EA6\u30FB\u76F8\u4F3C\uFF08\u5C0F\u5B66\u6821\u9AD8\u5B66\u5E74\uFF09"), /*#__PURE__*/React.createElement("div", {style:{marginBottom:"16px"}},
+    React.createElement("button", {
+      onClick: ()=>reviewBank.length>0&&setReviewMode(r=>!r),
+      style:{width:"100%",padding:"12px 16px",borderRadius:"14px",cursor:reviewBank.length>0?"pointer":"default",border:reviewMode?"2px solid #ef4444":"2px solid #e5e7eb",background:reviewMode?"#fef2f2":"#f9fafb",display:"flex",alignItems:"center",justifyContent:"space-between",fontFamily:"inherit",opacity:reviewBank.length===0?0.45:1}},
+      React.createElement("span",{style:{fontWeight:"900",fontSize:"14px",color:reviewMode?"#b91c1c":"#374151"}},"📚 復習モード"),
+      React.createElement("span",{style:{background:reviewBank.length>0?(reviewMode?"#ef4444":"#6b7280"):"#d1d5db",color:"#fff",borderRadius:"99px",padding:"2px 10px",fontSize:"12px",fontWeight:"bold"}},reviewBank.length>0?`${reviewBank.length}問`:"なし")
+    ),
+    reviewBank.length===0&&React.createElement("div",{style:{fontSize:"11px",color:"#9ca3af",textAlign:"center",marginTop:"4px"}},"間違えた問題が溜まるとここで復習できます"),
+    reviewMode&&reviewBank.length>0&&React.createElement("div",{style:{fontSize:"11px",color:"#ef4444",textAlign:"center",marginTop:"4px",fontWeight:"bold"}},"✅ 5回正解で復習リストから卒業！")
+  ),
+  best > 0 && /*#__PURE__*/React.createElement("div", {
     className: "best-badge",
     style: {
       background: "#f3e8ff",
@@ -2188,7 +2241,7 @@ function App() {
 
   // ── 結果 ──────────────────────────────────────────────────
   if (mode === "result") {
-    const pct = Math.round(score / totalQ * 100);
+    const pct = Math.round(score / Math.max(problems.length, 1) * 100);
     return /*#__PURE__*/React.createElement("div", {
       className: "setup-wrap",
       style: {
@@ -2268,7 +2321,7 @@ function App() {
     }, "\u8A2D\u5B9A\u3078"))));
   }
   if (!problem) return null;
-  const progress = current / totalQ * 100;
+  const progress = current / Math.max(problems.length, 1) * 100;
 
   // ── クイズ ────────────────────────────────────────────────
   return /*#__PURE__*/React.createElement("div", {
@@ -2595,7 +2648,7 @@ function App() {
       boxShadow: "0 4px 0 #15803d"
     },
     onClick: nextQuestion
-  }, current + 1 >= totalQ ? "結果を見る 🎉" : "つぎへ →"), !allCorrect && /*#__PURE__*/React.createElement("button", {
+  }, current + 1 >= problems.length ? "結果を見る 🎉" : "つぎへ →"), !allCorrect && /*#__PURE__*/React.createElement("button", {
     className: "retry-btn",
     onClick: () => {
       setChecked(false);

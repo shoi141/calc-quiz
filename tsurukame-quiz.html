@@ -352,7 +352,7 @@ function App() {
   };
 
   const nextQuestion = () => {
-    if (current + 1 >= totalQ) { setMode("result"); return; }
+    if (current+1>=problems.length) { setMode("result"); return; }
     setCurrent(c => c + 1);
     setScratch(""); setAnswerVals({}); setFocused("scratch");
     setChecked(false); setCorrect({}); setHintIdx(-1); setCeleb(false);
@@ -411,7 +411,7 @@ function App() {
         <div className="setup-card">
           <div className="setup-emoji">{pct===100 ? "🏆" : pct>=70 ? "🎉" : "💪"}</div>
           <h2 className="setup-title">おわり！</h2>
-          <p className="result-score">{totalQ}問中 <span className="result-big" style={{ color: "#f59e0b" }}>{score}</span> 問正解</p>
+          <p className="result-score">{problems.length}問中 <span className="result-big" style={{ color: "#f59e0b" }}>{score}</span> 問正解</p>
           <div className="pct-bar-bg" style={{ background: "#e9ecef" }}><div className="pct-bar-fill" style={{ background: BTN, width: `${pct}%` }}/></div>
           <p className="pct-text">{pct}%</p>
           <div className="streak-result-row">
