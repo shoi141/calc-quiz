@@ -9,6 +9,15 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.2/babel.min.js"></script>
 <script src="common.js"></script>
+<script>
+const REVIEW_CORRECT_NEEDED = 5;
+function _reviewId(p){return((p.title||"")+("|")+(p._genType!==undefined?String(p._genType):p.question||"")).slice(0,60);}
+function reviewGetAll(k){try{const r=localStorage.getItem("review_"+k);return r?JSON.parse(r):[];}catch(_){return[];}}
+function _reviewSaveAll(k,b){try{localStorage.setItem("review_"+k,JSON.stringify(b));}catch(_){}}
+function reviewSave(k,p){try{const bank=reviewGetAll(k),id=_reviewId(p),ex=bank.find(x=>x._id===id);if(ex){ex._missCount=(ex._missCount||0)+1;ex._correctCount=0;}else{const {figure,...s}=p;bank.push({...s,_id:id,_savedAt:Date.now(),_missCount:1,_correctCount:0,_isDynamic:p._genType!==undefined});}  _reviewSaveAll(k,bank);}catch(_){}}
+function reviewMarkCorrect(k,p){try{const bank=reviewGetAll(k),id=_reviewId(p),idx=bank.findIndex(x=>x._id===id);if(idx===-1)return false;bank[idx]._correctCount=(bank[idx]._correctCount||0)+1;const grad=bank[idx]._correctCount>=REVIEW_CORRECT_NEEDED;if(grad)bank.splice(idx,1);_reviewSaveAll(k,bank);return grad;}catch(_){return false;}}
+function reviewGetProblems(k,genFn){return reviewGetAll(k).map(e=>{if(e._isDynamic&&genFn&&e._genType!==undefined){try{const f=genFn(e._genType);if(f)return{...f,_id:e._id,_missCount:e._missCount,_correctCount:e._correctCount};}catch(_){}}return e;}).filter(Boolean);}
+</script>
 <style>
   body { background: #ecfdf5; }
   .cursor-blink { color: #059669; }
@@ -18,17 +27,19 @@
 <div id="root"></div>
 <script type="text/babel">
 const { useState, useCallback, useEffect } = React;
+const QUIZ_KEY = "ueki";
 const STORAGE_KEY = "ueki_best";
 
 
-function genProblem() {
-  const type = Math.floor(Math.random() * 4);
+function genProblemOfType(t){return genProblem(t);}
+function genProblem(forceType) {
+  const type = forceType !== undefined ? forceType : Math.floor(Math.random() * 4);
 
   if (type === 0) {
     // 直線に植える（両端あり）
     const n = randInt(4,12), interval = randInt(2,8);
     const length = (n-1)*interval;
-    return {
+    return {_genType:type,
       title: "植木算①（両端あり）", color: "#059669",
       text: ` **${length}m** の道の両端を含めて
  **${interval}m** 間隔で木を植えます。
@@ -46,7 +57,7 @@ function genProblem() {
     // 円形（池の周り）
     const n = randInt(4,15), interval = randInt(2,8);
     const length = n*interval;
-    return {
+    return {_genType:type,
       title: "植木算②（円形）", color: "#047857",
       text: `池の周り **${length}m** に
  **${interval}m** 間隔で木を植えます。
@@ -65,7 +76,7 @@ function genProblem() {
     const n = randInt(3,9); // 1辺の個数
     const outer = 4*(n-1); // 外周の個数
     const total = n*n;
-    return {
+    return {_genType:type,
       title: "方陣算①（外周）", color: "#065f46",
       text: `碁石を正方形に並べます。
 1辺に **${n}個** ずつ並べたとき、
@@ -81,7 +92,7 @@ function genProblem() {
   // 方陣算（全体の個数）
   const n = randInt(3,9);
   const hollow = n*n - (n-2)*(n-2);
-  return {
+  return {_genType:type,
     title: "方陣算②（中空方陣）", color: "#064e3b",
     text: `碁石を正方形の形に並べます。
 外側の1辺に **${n}個** 並べて
@@ -141,12 +152,23 @@ function App() {
   const [streak, setStreak]           = useState(0);
   const [best, setBest]               = useState(0);
   const [confirmOpen, setConfirmOpen] = useState(false);
+  const [reviewBank, setReviewBank] = useState([]);
 
   useEffect(() => {
     try { const s = localStorage.getItem(STORAGE_KEY); if (s) setBest(parseInt(s) || 0); } catch(_) {}
   }, []);
   const saveBest = v => { try { localStorage.setItem(STORAGE_KEY, String(v)); } catch(_) {} };
 
+  const startReview=()=>{
+    const bank=reviewGetAll(QUIZ_KEY);
+    setReviewBank(bank);
+    if(bank.length===0){setMode("setup");return;}
+    setProblems(reviewGetProblems(QUIZ_KEY,genProblemOfType));
+    setCurrent(0);setScore(0);setStreak(0);
+    setScratch("");setAnswerVals({});setFocused("scratch");
+    setChecked(false);setCorrect({});setHintIdx(-1);setCeleb(false);setConfirmOpen(false);
+    setMode("review");
+  };
   const startQuiz = () => {
     setProblems(Array.from({ length: totalQ }, () => genProblem()));
     setCurrent(0); setScore(0); setStreak(0);
@@ -193,12 +215,14 @@ function App() {
     if (Object.values(r).every(Boolean)) {
       setScore(s => s + 1); const ns = streak + 1; setStreak(ns);
       if (ns > best) { setBest(ns); saveBest(ns); }
-      setCeleb(true); setTimeout(() => setCeleb(false), 2000);
-    } else { setStreak(0); }
+      setCeleb(true); setTimeout(() => setCeleb(false), 2000); reviewMarkCorrect(QUIZ_KEY,problem); setReviewBank(reviewGetAll(QUIZ_KEY));
+    } else { setStreak(0); reviewSave(QUIZ_KEY,problem); setReviewBank(reviewGetAll(QUIZ_KEY)); }
   };
 
   const nextQuestion = () => {
-    if (current + 1 >= totalQ) { setMode("result"); return; }
+    const _end=current+1>=problems.length;
+    if(_end&&mode==="review"){const b=reviewGetAll(QUIZ_KEY);setReviewBank(b);if(b.length>0){startReview();}else{setMode("graduated");}return;}
+    if(_end){setMode("result");return;}
     setCurrent(c => c + 1);
     setScratch(""); setAnswerVals({}); setFocused("scratch");
     setChecked(false); setCorrect({}); setHintIdx(-1); setCeleb(false);
@@ -215,6 +239,29 @@ function App() {
         <div className="setup-emoji">📝</div>
         <h1 className="setup-title">{"植木算・方陣算 練習"}</h1>
         <p className="setup-sub">小学校高学年レベル</p>
+                {/* 復習モード */}
+        <div style={{marginBottom:"16px"}}>
+          <button
+            onClick={()=>{if(reviewBank.length>0){startReview();}}}
+            style={{width:"100%",padding:"14px 16px",borderRadius:"14px",
+              cursor:reviewBank.length>0?"pointer":"default",
+              border:reviewBank.length>0?"2px solid #ef4444":"2px solid #e5e7eb",
+              background:reviewBank.length>0?"#fef2f2":"#f9fafb",
+              display:"flex",alignItems:"center",justifyContent:"space-between",
+              fontFamily:"inherit",opacity:reviewBank.length===0?0.45:1}}>
+            <div style={{textAlign:"left"}}>
+              <div style={{fontWeight:"900",fontSize:"15px",color:reviewBank.length>0?"#b91c1c":"#374151"}}>
+                📚 復習モード
+              </div>
+              {reviewBank.length>0&&<div style={{fontSize:"11px",color:"#ef4444",marginTop:"2px"}}>タップして今すぐ開始！</div>}
+            </div>
+            <span style={{background:reviewBank.length>0?"#ef4444":"#d1d5db",
+              color:"#fff",borderRadius:"99px",padding:"4px 12px",fontSize:"13px",fontWeight:"bold"}}>
+              {reviewBank.length>0?`${reviewBank.length}問`:"なし"}
+            </span>
+          </button>
+          {reviewBank.length===0&&<div style={{fontSize:"11px",color:"#9ca3af",textAlign:"center",marginTop:"4px"}}>間違えた問題が溜まるとここで復習できます</div>}
+        </div>
         {best > 0 && <div className="best-badge" style={{ background:"rgba(0,0,0,0.05)", border:"1.5px solid rgba(0,0,0,0.1)" }}>🏆 最高連続記録：<strong>{best}問</strong></div>}
         <div className="qcount-section">何問やる？</div>
         <div className="qcount-grid">
@@ -225,6 +272,25 @@ function App() {
           ))}
         </div>
         <button className="start-btn" style={{ background: BTN, color: TXT, boxShadow: `0 4px 0 ${SHD}` }} onClick={startQuiz}>スタート！ 🚀</button>
+      </div>
+    </div>
+  );
+
+
+  if(mode==="graduated") return(
+    <div className="setup-wrap" style={{background:"#f0fdf4"}}>
+      <div className="setup-card">
+        <div className="setup-emoji">🎓</div>
+        <h2 className="setup-title" style={{color:"#166534"}}>復習バンク卒業！</h2>
+        <p style={{fontSize:"14px",color:"#16a34a",marginBottom:"16px",fontWeight:"bold"}}>
+          すべての問題を5回正解しました！
+        </p>
+        <div style={{background:"#dcfce7",borderRadius:"14px",padding:"16px",marginBottom:"16px",fontSize:"13px",color:"#166534",lineHeight:"1.8"}}>
+          🌟 間違えた問題をすべてマスターしました！<br/>
+          通常モードで新しい問題に挑戦しましょう。
+        </div>
+        <button className="start-btn" style={{background:"linear-gradient(135deg,#4ade80,#22c55e)",color:"#fff",boxShadow:"0 4px 0 #16a34a"}}
+          onClick={()=>setMode("setup")}>もどる</button>
       </div>
     </div>
   );
@@ -247,6 +313,11 @@ function App() {
             <button className="start-btn" style={{ background: BTN, color: TXT, boxShadow: `0 4px 0 ${SHD}` }} onClick={startQuiz}>もう一度</button>
             <button className="start-btn" style={{ background:"#868e96", color:"#fff", boxShadow:"0 4px 0 #495057" }} onClick={() => setMode("setup")}>設定へ</button>
           </div>
+          {reviewBank.length>0&&(
+            <button className="start-btn"
+              style={{background:"linear-gradient(135deg,#ef4444,#dc2626)",color:"#fff",boxShadow:"0 4px 0 #991b1b",marginTop:"8px",width:"100%"}}
+              onClick={startReview}>続けて復習する 📚 ({reviewBank.length}問)</button>
+          )}
         </div>
       </div>
     );

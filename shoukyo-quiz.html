@@ -9,6 +9,15 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.2/babel.min.js"></script>
 <script src="common.js"></script>
+<script>
+const REVIEW_CORRECT_NEEDED = 5;
+function _reviewId(p){return((p.title||"")+("|")+(p._genType!==undefined?String(p._genType):p.question||"")).slice(0,60);}
+function reviewGetAll(k){try{const r=localStorage.getItem("review_"+k);return r?JSON.parse(r):[];}catch(_){return[];}}
+function _reviewSaveAll(k,b){try{localStorage.setItem("review_"+k,JSON.stringify(b));}catch(_){}}
+function reviewSave(k,p){try{const bank=reviewGetAll(k),id=_reviewId(p),ex=bank.find(x=>x._id===id);if(ex){ex._missCount=(ex._missCount||0)+1;ex._correctCount=0;}else{const {figure,...s}=p;bank.push({...s,_id:id,_savedAt:Date.now(),_missCount:1,_correctCount:0,_isDynamic:p._genType!==undefined});}  _reviewSaveAll(k,bank);}catch(_){}}
+function reviewMarkCorrect(k,p){try{const bank=reviewGetAll(k),id=_reviewId(p),idx=bank.findIndex(x=>x._id===id);if(idx===-1)return false;bank[idx]._correctCount=(bank[idx]._correctCount||0)+1;const grad=bank[idx]._correctCount>=REVIEW_CORRECT_NEEDED;if(grad)bank.splice(idx,1);_reviewSaveAll(k,bank);return grad;}catch(_){return false;}}
+function reviewGetProblems(k,genFn){return reviewGetAll(k).map(e=>{if(e._isDynamic&&genFn&&e._genType!==undefined){try{const f=genFn(e._genType);if(f)return{...f,_id:e._id,_missCount:e._missCount,_correctCount:e._correctCount};}catch(_){}}return e;}).filter(Boolean);}
+</script>
 <style>
   body { background: #eff6ff; }
   .cursor-blink { color: #3b82f6; }
@@ -138,8 +147,9 @@ function HintItem({ hint, faded }) {
 }
 
 // ─── 問題生成 ──────────────────────────────────────────────
-function genProblem() {
-  const type = Math.floor(Math.random() * 4);
+function genProblemOfType(t){return genProblem(t);}
+function genProblem(forceType) {
+  const type = forceType !== undefined ? forceType : Math.floor(Math.random() * 4);
 
   if (type === 0) {
     // 基本型：値段
@@ -155,7 +165,7 @@ function genProblem() {
     if (diffNb<=0||diffS<=0) return genProblem();
     const foods=[["りんご","みかん"],["ケーキ","プリン"],["パン","クッキー"],["チョコ","グミ"]];
     const [f1,f2]=foods[randInt(0,3)];
-    return {
+    return {_genType:type,
       title:"消去算①", color:"#3b82f6",
       text:`${f1}${na1}個と${f2}${nb1}個で **${sum1}円**\n${f1}${na2}個と${f2}${nb2}個で **${sum2}円**\n${f1}1個と${f2}1個の値段をそれぞれ求めなさい。`,
       answers:[{label:`${f1}1個`,value:a,unit:"円"},{label:`${f2}1個`,value:b,unit:"円"}],
@@ -195,7 +205,7 @@ function genProblem() {
     if (diffM===0) return genProblem();
     const names=[["A","B"],["兄","弟"],["姉","妹"],["赤","青"]];
     const [n1,n2]=names[randInt(0,3)];
-    return {
+    return {_genType:type,
       title:"消去算②", color:"#8b5cf6",
       text:`${n1}の${k1}倍と${n2}の${m1}倍の合計は **${sum1}**\n${n1}の${k2}倍と${n2}の${m2}倍の合計は **${sum2}**\n${n1}と${n2}をそれぞれ求めなさい。`,
       answers:[{label:n1,value:a,unit:""},{label:n2,value:b,unit:""}],
@@ -234,7 +244,7 @@ function genProblem() {
     if (diffNb<=0||diffW<=0) return genProblem();
     const things=[["本","ノート"],["缶","ビン"],["積み木","ブロック"],["りんご","みかん"]];
     const [i1,i2]=things[randInt(0,3)];
-    return {
+    return {_genType:type,
       title:"消去算③（重さ）", color:"#ec4899",
       text:`${i1}${na1}個と${i2}${nb1}個の重さは **${w1}g**\n${i1}${na2}個と${i2}${nb2}個の重さは **${w2}g**\n${i1}1個と${i2}1個の重さをそれぞれ求めなさい。`,
       answers:[{label:`${i1}1個`,value:a,unit:"g"},{label:`${i2}1個`,value:b,unit:"g"}],
@@ -268,7 +278,7 @@ function genProblem() {
   const allB=b*totalCount, diffPrice=a-b;
   const calcQa=(total-allB)/diffPrice;
   if (calcQa!==qa||calcQa<=0) return genProblem();
-  return {
+  return {_genType:type,
     title:"消去算④（応用）", color:"#f59e0b",
     text:`${s1}と${s2}を合わせて **${totalCount}個** 買い、\n合計金額は **${total}円** でした。\n${s1}は **${a}円**、${s2}は **${b}円** のとき、\nそれぞれ何個買いましたか？`,
     answers:[{label:`${s1}の個数`,value:qa,unit:"個"},{label:`${s2}の個数`,value:qb,unit:"個"}],
@@ -318,6 +328,7 @@ function ScratchDisplay({ scratch, focused }) {
   );
 }
 
+const QUIZ_KEY = "shoukyo";
 const STORAGE_KEY="shoukyo_best_streak";
 
 // ─── アプリ ────────────────────────────────────────────────
@@ -338,12 +349,24 @@ function App() {
   const [streak,setStreak]         = useState(0);
   const [best,setBest]             = useState(0);
   const [confirmOpen,setConfirmOpen] = useState(false);
+  const [reviewBank,setReviewBank] = useState([]);
 
   useEffect(()=>{
     try{const s=localStorage.getItem(STORAGE_KEY);if(s)setBest(parseInt(s)||0);}catch(_){}
+    setReviewBank(reviewGetAll(QUIZ_KEY));
   },[]);
   const saveBest=v=>{try{localStorage.setItem(STORAGE_KEY,String(v));}catch(_){}};
 
+  const startReview=()=>{
+    const bank=reviewGetAll(QUIZ_KEY);
+    setReviewBank(bank);
+    if(bank.length===0){setMode("setup");return;}
+    setProblems(reviewGetProblems(QUIZ_KEY,genProblemOfType));
+    setCurrent(0);setScore(0);setStreak(0);
+    setScratch("");setAnswerVals({});setFocused("scratch");
+    setChecked(false);setCorrect({});setHintIdx(-1);setCeleb(false);setConfirmOpen(false);
+    setMode("review");
+  };
   const startQuiz=()=>{
     setProblems(Array.from({length:totalQ},()=>genProblem()));
     setCurrent(0);setScore(0);setStreak(0);
@@ -388,12 +411,14 @@ function App() {
       setScore(s=>s+1);
       const ns=streak+1;setStreak(ns);
       if(ns>best){setBest(ns);saveBest(ns);}
-      setCeleb(true);setTimeout(()=>setCeleb(false),2000);
-    } else {setStreak(0);}
+      setCeleb(true);setTimeout(()=>setCeleb(false),2000);reviewMarkCorrect(QUIZ_KEY,problem);setReviewBank(reviewGetAll(QUIZ_KEY));
+    } else {setStreak(0);reviewSave(QUIZ_KEY,problem);setReviewBank(reviewGetAll(QUIZ_KEY));}
   };
 
   const nextQuestion=()=>{
-    if(current+1>=totalQ){setMode("result");return;}
+    const _end=current+1>=problems.length;
+    if(_end&&mode==="review"){const b=reviewGetAll(QUIZ_KEY);setReviewBank(b);if(b.length>0){startReview();}else{setMode("graduated");}return;}
+    if(_end){setMode("result");return;}
     setCurrent(c=>c+1);
     setScratch("");setAnswerVals({});setFocused("scratch");
     setChecked(false);setCorrect({});setHintIdx(-1);setCeleb(false);
@@ -408,6 +433,29 @@ function App() {
         <div style={{fontSize:"56px",marginBottom:"8px"}}>🔢</div>
         <h1 style={{fontSize:"24px",fontWeight:"900",color:"#1e3a8a",margin:"0 0 4px"}}>消去算 練習</h1>
         <p style={{color:"#6b7280",fontSize:"13px",marginBottom:"20px"}}>小学校高学年レベル</p>
+                {/* 復習モード */}
+        <div style={{marginBottom:"16px"}}>
+          <button
+            onClick={()=>{if(reviewBank.length>0){startReview();}}}
+            style={{width:"100%",padding:"14px 16px",borderRadius:"14px",
+              cursor:reviewBank.length>0?"pointer":"default",
+              border:reviewBank.length>0?"2px solid #ef4444":"2px solid #e5e7eb",
+              background:reviewBank.length>0?"#fef2f2":"#f9fafb",
+              display:"flex",alignItems:"center",justifyContent:"space-between",
+              fontFamily:"inherit",opacity:reviewBank.length===0?0.45:1}}>
+            <div style={{textAlign:"left"}}>
+              <div style={{fontWeight:"900",fontSize:"15px",color:reviewBank.length>0?"#b91c1c":"#374151"}}>
+                📚 復習モード
+              </div>
+              {reviewBank.length>0&&<div style={{fontSize:"11px",color:"#ef4444",marginTop:"2px"}}>タップして今すぐ開始！</div>}
+            </div>
+            <span style={{background:reviewBank.length>0?"#ef4444":"#d1d5db",
+              color:"#fff",borderRadius:"99px",padding:"4px 12px",fontSize:"13px",fontWeight:"bold"}}>
+              {reviewBank.length>0?`${reviewBank.length}問`:"なし"}
+            </span>
+          </button>
+          {reviewBank.length===0&&<div style={{fontSize:"11px",color:"#9ca3af",textAlign:"center",marginTop:"4px"}}>間違えた問題が溜まるとここで復習できます</div>}
+        </div>
         {best>0&&<div style={{background:"#dbeafe",border:"1.5px solid #93c5fd",borderRadius:"12px",padding:"10px 16px",fontSize:"15px",color:"#1e3a8a",marginBottom:"20px",display:"inline-block"}}>🏆 最高連続記録：<strong>{best}問</strong></div>}
         <div style={{fontSize:"13px",fontWeight:"bold",color:"#6b7280",marginBottom:"10px",textTransform:"uppercase",letterSpacing:"0.05em"}}>何問やる？</div>
         <div style={{display:"flex",gap:"10px",justifyContent:"center",marginBottom:"24px"}}>
@@ -421,6 +469,25 @@ function App() {
   );
 
   // ── 結果 ─────────────────────────────────────────────────
+
+  if(mode==="graduated") return(
+    <div className="setup-wrap" style={{background:"#f0fdf4"}}>
+      <div className="setup-card">
+        <div className="setup-emoji">🎓</div>
+        <h2 className="setup-title" style={{color:"#166534"}}>復習バンク卒業！</h2>
+        <p style={{fontSize:"14px",color:"#16a34a",marginBottom:"16px",fontWeight:"bold"}}>
+          すべての問題を5回正解しました！
+        </p>
+        <div style={{background:"#dcfce7",borderRadius:"14px",padding:"16px",marginBottom:"16px",fontSize:"13px",color:"#166534",lineHeight:"1.8"}}>
+          🌟 間違えた問題をすべてマスターしました！<br/>
+          通常モードで新しい問題に挑戦しましょう。
+        </div>
+        <button className="start-btn" style={{background:"linear-gradient(135deg,#4ade80,#22c55e)",color:"#fff",boxShadow:"0 4px 0 #16a34a"}}
+          onClick={()=>setMode("setup")}>もどる</button>
+      </div>
+    </div>
+  );
+
   if(mode==="result"){
     const pct=Math.round((score/totalQ)*100);
     return(
@@ -447,6 +514,11 @@ function App() {
             <button style={{flex:1,padding:"14px",background:"linear-gradient(135deg,#60a5fa,#3b82f6)",border:"none",borderRadius:"14px",fontSize:"16px",fontWeight:"900",color:"#fff",cursor:"pointer",boxShadow:"0 4px 0 #1d4ed8"}} onClick={startQuiz}>もう一度</button>
             <button style={{flex:1,padding:"14px",background:"#6b7280",border:"none",borderRadius:"14px",fontSize:"16px",fontWeight:"900",color:"#fff",cursor:"pointer",boxShadow:"0 4px 0 #374151"}} onClick={()=>setMode("setup")}>設定へ</button>
           </div>
+          {reviewBank.length>0&&(
+            <button className="start-btn"
+              style={{background:"linear-gradient(135deg,#ef4444,#dc2626)",color:"#fff",boxShadow:"0 4px 0 #991b1b",marginTop:"8px",width:"100%"}}
+              onClick={startReview}>続けて復習する 📚 ({reviewBank.length}問)</button>
+          )}
         </div>
       </div>
     );
@@ -608,7 +680,7 @@ function App() {
         ):(
           <>
             <button style={{flex:1,padding:"14px",background:"linear-gradient(135deg,#4ade80,#22c55e)",border:"none",borderRadius:"14px",fontSize:"16px",fontWeight:"900",color:"#14532d",cursor:"pointer",boxShadow:"0 4px 0 #15803d"}} onClick={nextQuestion}>
-              {current+1>=totalQ?"結果を見る 🎉":"つぎへ →"}
+              {current+1>=problems.length?(mode==="review"?(reviewGetAll(QUIZ_KEY).length>0?"続きへ 🔁":"卒業！ 🎓"):"結果を見る 🎉"):"つぎへ →"}
             </button>
             {!allCorrect&&(
               <button style={{padding:"14px 18px",background:"#fff",border:"2px solid #e5e7eb",borderRadius:"14px",fontSize:"14px",fontWeight:"bold",color:"#6b7280",cursor:"pointer"}} onClick={()=>{setChecked(false);setCorrect({});}}>
