@@ -10,123 +10,13 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.2/babel.min.js"></script>
 <script src="common.js"></script>
 <script>
-// ── 復習バンク共通ユーティリティ ─────────────────────────────
-// 正解5回で復習バンクから削除（反復記憶方式）
-// 計算問題はタイプIDのみ保存 → 復習時に数字を再生成
-
 const REVIEW_CORRECT_NEEDED = 5;
-
-function _reviewId(problem) {
-  return (problem.title + "|" + problem.question).slice(0, 60);
-}
-
-function reviewGetAll(subjectKey) {
-  try {
-    const raw = localStorage.getItem("review_" + subjectKey);
-    return raw ? JSON.parse(raw) : [];
-  } catch(_) { return []; }
-}
-
-function _reviewSaveAll(subjectKey, bank) {
-  try {
-    localStorage.setItem("review_" + subjectKey, JSON.stringify(bank));
-  } catch(_) {}
-}
-
-// 間違えたとき保存
-// _genType があるなら（動的生成問題）タイプ番号だけ保存
-function reviewSave(subjectKey, problem) {
-  try {
-    const bank = reviewGetAll(subjectKey);
-    const id = _reviewId(problem);
-    const existing = bank.find(p => p._id === id);
-    if (existing) {
-      existing._missCount = (existing._missCount || 0) + 1;
-      existing._correctCount = 0;
-    } else {
-      // 動的生成問題（_genType あり）はタイプ番号だけ保存
-      if (problem._genType !== undefined) {
-        bank.push({
-          _id: id,
-          _savedAt: Date.now(),
-          _missCount: 1,
-          _correctCount: 0,
-          _genType: problem._genType,   // ← タイプ番号のみ
-          _isDynamic: true,
-          title: problem.title,         // 表示用
-          diff: problem.diff || "shogaku",
-        });
-      } else {
-        // 静的問題（○×・選択・記述）はそのまま保存
-        const { figure, ...saveable } = problem;
-        bank.push({
-          ...saveable,
-          _id: id,
-          _savedAt: Date.now(),
-          _missCount: 1,
-          _correctCount: 0,
-          _isDynamic: false,
-        });
-      }
-    }
-    _reviewSaveAll(subjectKey, bank);
-  } catch(_) {}
-}
-
-// 正解時：correctCount+1、5回で卒業。trueなら卒業
-function reviewMarkCorrect(subjectKey, problem) {
-  try {
-    const bank = reviewGetAll(subjectKey);
-    const id = _reviewId(problem);
-    const idx = bank.findIndex(p => p._id === id);
-    if (idx === -1) return false;
-    bank[idx]._correctCount = (bank[idx]._correctCount || 0) + 1;
-    const graduated = bank[idx]._correctCount >= REVIEW_CORRECT_NEEDED;
-    if (graduated) bank.splice(idx, 1);
-    _reviewSaveAll(subjectKey, bank);
-    return graduated;
-  } catch(_) { return false; }
-}
-
-// 復習バンクから問題リストを取得
-// genFn: (type) => problem  動的問題の再生成関数
-function reviewGetProblems(subjectKey, genFn) {
-  const bank = reviewGetAll(subjectKey);
-  return bank.map(entry => {
-    if (entry._isDynamic && genFn) {
-      // タイプ番号から新しい問題を生成（数字はランダム）
-      try {
-        const fresh = genFn(entry._genType);
-        if (fresh) {
-          return {
-            ...fresh,
-            _id: entry._id,           // IDは元のものを維持（正解時の削除に使う）
-            _missCount: entry._missCount,
-            _correctCount: entry._correctCount,
-          };
-        }
-      } catch(_) {}
-    }
-    return entry; // 静的問題はそのまま
-  }).filter(Boolean);
-}
-
-function reviewCount(subjectKey) {
-  return reviewGetAll(subjectKey).length;
-}
-
-function reviewClear(subjectKey) {
-  try { localStorage.removeItem("review_" + subjectKey); } catch(_) {}
-}
-
-function reviewGetProgress(subjectKey, problem) {
-  try {
-    const bank = reviewGetAll(subjectKey);
-    const found = bank.find(p => p._id === _reviewId(problem));
-    return found ? { correct: found._correctCount || 0, needed: REVIEW_CORRECT_NEEDED } : null;
-  } catch(_) { return null; }
-}
-
+function _reviewId(p){return((p.title||"")+("|")+(p._genType!==undefined?String(p._genType):p.question||"")).slice(0,60);}
+function reviewGetAll(k){try{const r=localStorage.getItem("review_"+k);return r?JSON.parse(r):[];}catch(_){return[];}}
+function _reviewSaveAll(k,b){try{localStorage.setItem("review_"+k,JSON.stringify(b));}catch(_){}}
+function reviewSave(k,p){try{const bank=reviewGetAll(k),id=_reviewId(p),ex=bank.find(x=>x._id===id);if(ex){ex._missCount=(ex._missCount||0)+1;ex._correctCount=0;}else{const {figure,...s}=p;bank.push({...s,_id:id,_savedAt:Date.now(),_missCount:1,_correctCount:0,_isDynamic:p._genType!==undefined});}  _reviewSaveAll(k,bank);}catch(_){}}
+function reviewMarkCorrect(k,p){try{const bank=reviewGetAll(k),id=_reviewId(p),idx=bank.findIndex(x=>x._id===id);if(idx===-1)return false;bank[idx]._correctCount=(bank[idx]._correctCount||0)+1;const grad=bank[idx]._correctCount>=REVIEW_CORRECT_NEEDED;if(grad)bank.splice(idx,1);_reviewSaveAll(k,bank);return grad;}catch(_){return false;}}
+function reviewGetProblems(k,genFn){return reviewGetAll(k).map(e=>{if(e._isDynamic&&genFn&&e._genType!==undefined){try{const f=genFn(e._genType);if(f)return{...f,_id:e._id,_missCount:e._missCount,_correctCount:e._correctCount};}catch(_){}}return e;}).filter(Boolean);}
 </script>
 <style>
   body { background: #faf5ff; }
@@ -137,7 +27,7 @@ function reviewGetProgress(subjectKey, problem) {
 <div id="root"></div>
 <script type="text/babel">
 const { useState, useCallback, useEffect } = React;
-const SUBJECT_KEY = "calc";
+const QUIZ_KEY = "suiri";
 const STORAGE_KEY = "suiri_best";
 
 
@@ -234,33 +124,31 @@ function App() {
   const [streak,setStreak]           = useState(0);
   const [best,setBest]               = useState(0);
   const [confirmOpen,setConfirmOpen] = useState(false);
-  const [reviewMode,setReviewMode] = useState(false);
-  const [reviewBank,setReviewBank]   = useState([]);
+  const [reviewBank,setReviewBank] = useState([]);
 
   useEffect(()=>{
     try{const s=localStorage.getItem(STORAGE_KEY);if(s)setBest(parseInt(s)||0);}catch(_){}
-    setReviewBank(reviewGetAll(SUBJECT_KEY));
+    setReviewBank(reviewGetAll(QUIZ_KEY));
   },[]);
   const saveBest=v=>{try{localStorage.setItem(STORAGE_KEY,String(v));}catch(_){}};
 
+  const startReview=()=>{
+    const bank=reviewGetAll(QUIZ_KEY);
+    setReviewBank(bank);
+    if(bank.length===0){setMode("setup");return;}
+    setProblems(reviewGetProblems(QUIZ_KEY,genProblemOfType));
+    setCurrent(0);setScore(0);setStreak(0);
+    setScratch("");setAnswerVals({});setFocused("scratch");
+    setChecked(false);setCorrect({});setHintIdx(-1);setCeleb(false);setConfirmOpen(false);
+    setMode("review");
+  };
   const startQuiz=()=>{
     setProblems(Array.from({length:totalQ},()=>genProblem()));
     setCurrent(0);setScore(0);setStreak(0);
     setScratch("");setAnswerVals({});setFocused("scratch");
     setChecked(false);setCorrect({});setHintIdx(-1);setCeleb(false);setConfirmOpen(false);
     setMode("quiz");
-  }
-
-  const startReview=()=>{
-    const bank=reviewGetAll(SUBJECT_KEY);
-    setReviewBank(bank);
-    if(bank.length===0){setReviewMode(false);return;}
-    setProblems(reviewGetProblems(SUBJECT_KEY,genProblemOfType));
-    setCurrent(0);setScore(0);setStreak(0);
-    setScratch("");setAnswerVals({});setFocused("scratch");
-    setChecked(false);setCorrect({});setHintIdx(-1);setCeleb(false);setConfirmOpen(false);
-    setMode("review");
-  };;
+  };
 
   const isScratch=focused==="scratch";
   const ansIdx=isScratch?-1:parseInt(focused.split("-")[1]);
@@ -301,14 +189,14 @@ function App() {
     if(Object.values(r).every(Boolean)){
       setScore(s=>s+1);const ns=streak+1;setStreak(ns);
       if(ns>best){setBest(ns);saveBest(ns);}
-      setCeleb(true);setTimeout(()=>setCeleb(false),2000);reviewMarkCorrect(SUBJECT_KEY,problem);setReviewBank(reviewGetAll(SUBJECT_KEY));
-    }else{setStreak(0);reviewSave(SUBJECT_KEY,problem);setReviewBank(reviewGetAll(SUBJECT_KEY));}
+      setCeleb(true);setTimeout(()=>setCeleb(false),2000);reviewMarkCorrect(QUIZ_KEY,problem);setReviewBank(reviewGetAll(QUIZ_KEY));
+    }else{setStreak(0);reviewSave(QUIZ_KEY,problem);setReviewBank(reviewGetAll(QUIZ_KEY));}
   };
 
   const nextQuestion=()=>{
-    const isEnd=current+1>=problems.length;
-    if(isEnd&&mode==="review"){const b=reviewGetAll(SUBJECT_KEY);setReviewBank(b);if(b.length>0){startReview();}else{setMode("graduated");}return;}
-    if(isEnd){setMode("result");return;}
+    const _end=current+1>=problems.length;
+    if(_end&&mode==="review"){const b=reviewGetAll(QUIZ_KEY);setReviewBank(b);if(b.length>0){startReview();}else{setMode("graduated");}return;}
+    if(_end){setMode("result");return;}
     setCurrent(c=>c+1);
     setScratch("");setAnswerVals({});setFocused("scratch");
     setChecked(false);setCorrect({});setHintIdx(-1);setCeleb(false);
@@ -329,7 +217,7 @@ function App() {
                 {/* 復習モード */}
         <div style={{marginBottom:"16px"}}>
           <button
-            onClick={()=>{if(reviewBank.length>0){setReviewMode(true);startReview();}}}
+            onClick={()=>{if(reviewBank.length>0){startReview();}}}
             style={{width:"100%",padding:"14px 16px",borderRadius:"14px",
               cursor:reviewBank.length>0?"pointer":"default",
               border:reviewBank.length>0?"2px solid #ef4444":"2px solid #e5e7eb",
@@ -369,7 +257,7 @@ function App() {
       <div className="setup-card">
         <div className="setup-emoji">🎓</div>
         <h2 className="setup-title" style={{color:"#166534"}}>復習バンク卒業！</h2>
-        <p style={{fontSize:"14px",color:"#4ade80",marginBottom:"16px",fontWeight:"bold"}}>
+        <p style={{fontSize:"14px",color:"#16a34a",marginBottom:"16px",fontWeight:"bold"}}>
           すべての問題を5回正解しました！
         </p>
         <div style={{background:"#dcfce7",borderRadius:"14px",padding:"16px",marginBottom:"16px",fontSize:"13px",color:"#166534",lineHeight:"1.8"}}>
@@ -377,7 +265,7 @@ function App() {
           通常モードで新しい問題に挑戦しましょう。
         </div>
         <button className="start-btn" style={{background:"linear-gradient(135deg,#4ade80,#22c55e)",color:"#fff",boxShadow:"0 4px 0 #16a34a"}}
-          onClick={()=>{setReviewMode(false);setMode("setup");}}>もどる</button>
+          onClick={()=>setMode("setup")}>もどる</button>
       </div>
     </div>
   );
@@ -401,8 +289,9 @@ function App() {
             <button className="start-btn" style={{background:"#868e96",color:"#fff",boxShadow:"0 4px 0 #495057"}} onClick={()=>setMode("setup")}>設定へ</button>
           </div>
           {reviewBank.length>0&&(
-            <button className="start-btn" style={{background:"linear-gradient(135deg,#ef4444,#dc2626)",color:"#fff",boxShadow:"0 4px 0 #991b1b",marginTop:"8px",width:"100%"}}
-              onClick={()=>{setReviewMode(true);startReview();}}>続けて復習する 📚 ({reviewBank.length}問)</button>
+            <button className="start-btn"
+              style={{background:"linear-gradient(135deg,#ef4444,#dc2626)",color:"#fff",boxShadow:"0 4px 0 #991b1b",marginTop:"8px",width:"100%"}}
+              onClick={startReview}>続けて復習する 📚 ({reviewBank.length}問)</button>
           )}
         </div>
       </div>
@@ -548,7 +437,7 @@ function App() {
         ):(
           <>
             <button className="next-btn" style={{background:"linear-gradient(135deg,#51cf66,#20c997)",color:"#fff",boxShadow:"0 4px 0 #2f9e44"}} onClick={nextQuestion}>
-              {current+1>=problems.length?(mode==="review"?reviewGetAll(SUBJECT_KEY).length>0?"続きへ 🔁":"卒業！ 🎓":"結果を見る 🎉"):"つぎへ →"}
+              {current+1>=problems.length?(mode==="review"?(reviewGetAll(QUIZ_KEY).length>0?"続きへ 🔁":"卒業！ 🎓"):"結果を見る 🎉"):"つぎへ →"}
             </button>
             {!allCorrect&&<button className="retry-btn" onClick={()=>{setChecked(false);setCorrect({});{}}}>やりなおす</button>}
           </>

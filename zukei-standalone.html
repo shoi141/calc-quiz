@@ -306,21 +306,18 @@ button:active { transform:translateY(2px) !important; box-shadow:0 1px 0 rgba(0,
 .confirm-ok-btn {
   box-shadow: 0 4px 0 #f59f00;
 }
+
 body { background: #fdf4ff; }
 .cursor-blink { color: #a855f7; }
-.figure-card {
-  background: #fff; border-radius: 16px; padding: 16px;
-  box-shadow: 0 2px 12px rgba(0,0,0,0.08);
-  display: flex; justify-content: center; align-items: center;
-}
-.figure-card svg { overflow: visible; }
-.fig-fill        { fill: #f3e8ff; }
-.fig-stroke      { fill: none; stroke: #9333ea; stroke-width: 2.5; stroke-linejoin: round; }
-.fig-dim         { font-size: 13px; font-weight: bold; fill: #7e22ce; font-family: 'Hiragino Maru Gothic ProN', sans-serif; }
-.fig-angle       { fill: none; stroke: #f59e0b; stroke-width: 1.8; }
-.fig-angle-label { font-size: 12px; font-weight: bold; fill: #b45309; font-family: 'Hiragino Maru Gothic ProN', sans-serif; }
-.fig-right-angle { fill: none; stroke: #9333ea; stroke-width: 1.8; }
-.fig-aux         { fill: none; stroke: #94a3b8; stroke-width: 1.5; stroke-dasharray: 5,4; }
+.figure-card { background:#fff;border-radius:16px;padding:16px;box-shadow:0 2px 12px rgba(0,0,0,0.08);display:flex;justify-content:center;align-items:center; }
+.figure-card svg { overflow:visible; }
+.fig-fill { fill:#f3e8ff; }
+.fig-stroke { fill:none;stroke:#9333ea;stroke-width:2.5;stroke-linejoin:round; }
+.fig-dim { font-size:13px;font-weight:bold;fill:#7e22ce;font-family:'Hiragino Maru Gothic ProN',sans-serif; }
+.fig-angle { fill:none;stroke:#f59e0b;stroke-width:1.8; }
+.fig-angle-label { font-size:12px;font-weight:bold;fill:#b45309;font-family:'Hiragino Maru Gothic ProN',sans-serif; }
+.fig-right-angle { fill:none;stroke:#9333ea;stroke-width:1.8; }
+.fig-aux { fill:none;stroke:#94a3b8;stroke-width:1.5;stroke-dasharray:5,4; }
 </style>
 </head>
 <body>
@@ -367,41 +364,24 @@ const KEYPAD = [
 ];
 
 const Q_OPTIONS   = [5, 10, 15, 20];
+
+</script>
+<script>
 const {
   useState,
   useCallback,
   useEffect
 } = React;
+const QUIZ_KEY = "zukei";
 
-// ── 復習バンク（zukei専用インライン版）──────────────────────
-const SUBJECT_KEY = "calc";
 const REVIEW_CORRECT_NEEDED = 5;
-function _reviewId(p){ return (p.title+"|"+(p._genType||p.title)).slice(0,60); }
-function reviewGetAll(k){ try{ const r=localStorage.getItem("review_"+k); return r?JSON.parse(r):[]; }catch(_){ return []; } }
-function _reviewSaveAll(k,b){ try{ localStorage.setItem("review_"+k,JSON.stringify(b)); }catch(_){} }
-function reviewSave(k,p){
-  try{
-    const bank=reviewGetAll(k), id=_reviewId(p);
-    const ex=bank.find(x=>x._id===id);
-    if(ex){ ex._missCount=(ex._missCount||0)+1; ex._correctCount=0; }
-    else{ const {figure,...s}=p; bank.push({...s,_id:id,_savedAt:Date.now(),_missCount:1,_correctCount:0,_isDynamic:true,_genType:p._genType}); }
-    _reviewSaveAll(k,bank);
-  }catch(_){}
-}
-; }catch(_){}
-    }
-    return entry;
-  }).filter(Boolean);
-}
-
-const SUBJECT_KEY = "calc";
-const REVIEW_CORRECT_NEEDED = 5;
-function _reviewId(p){return((p.title||"")+("|")+(p._genType!==undefined?p._genType:p.title||"")).slice(0,60);}
-function reviewGetAll(k){try{const r=localStorage.getItem("review_"+k);return r?JSON.parse(r):[];}catch(_){return [];}}
+function _reviewId(p){return((p.title||"")+("|")+(p._genType!==undefined?String(p._genType):p.question||"")).slice(0,60);}
+function reviewGetAll(k){try{const r=localStorage.getItem("review_"+k);return r?JSON.parse(r):[];}catch(_){return[];}}
 function _reviewSaveAll(k,b){try{localStorage.setItem("review_"+k,JSON.stringify(b));}catch(_){}}
-function reviewSave(k,p){try{const bank=reviewGetAll(k),id=_reviewId(p),ex=bank.find(x=>x._id===id);if(ex){ex._missCount=(ex._missCount||0)+1;ex._correctCount=0;}else{const {figure,...s}=p;bank.push({...s,_id:id,_savedAt:Date.now(),_missCount:1,_correctCount:0,_isDynamic:true});}  _reviewSaveAll(k,bank);}catch(_){}}
+function reviewSave(k,p){try{const bank=reviewGetAll(k),id=_reviewId(p),ex=bank.find(x=>x._id===id);if(ex){ex._missCount=(ex._missCount||0)+1;ex._correctCount=0;}else{const {figure,...s}=p;bank.push({...s,_id:id,_savedAt:Date.now(),_missCount:1,_correctCount:0,_isDynamic:p._genType!==undefined});}  _reviewSaveAll(k,bank);}catch(_){}}
 function reviewMarkCorrect(k,p){try{const bank=reviewGetAll(k),id=_reviewId(p),idx=bank.findIndex(x=>x._id===id);if(idx===-1)return false;bank[idx]._correctCount=(bank[idx]._correctCount||0)+1;const grad=bank[idx]._correctCount>=REVIEW_CORRECT_NEEDED;if(grad)bank.splice(idx,1);_reviewSaveAll(k,bank);return grad;}catch(_){return false;}}
-function reviewGetProblems(k,genFn){return reviewGetAll(k).map(entry=>{if(entry._isDynamic&&genFn&&entry._genType!==undefined){try{const f=genFn(entry._genType);if(f)return{...f,_id:entry._id,_missCount:entry._missCount,_correctCount:entry._correctCount};}catch(_){}}return entry;}).filter(Boolean);}
+function reviewGetProblems(k,genFn){return reviewGetAll(k).map(e=>{if(e._isDynamic&&genFn&&e._genType!==undefined){try{const f=genFn(e._genType);if(f)return{...f,_id:e._id,_missCount:e._missCount,_correctCount:e._correctCount};}catch(_){}}return e;}).filter(Boolean);}
+
 const STORAGE_KEY = "zukei_best_streak";
 
 // ─── SVG図形コンポーネント ──────────────────────────────────
@@ -1549,7 +1529,7 @@ function genProblem(diff = "mix") {
     const w = randInt(3, 15),
       h = randInt(3, 12);
     const ans = w * h;
-    return {
+    return {_genType: type,
       title: "面積①（長方形）",
       color: "#a855f7",
       text: `下の長方形の面積を求めなさい。`,
@@ -1570,7 +1550,7 @@ function genProblem(diff = "mix") {
     const base = randInt(4, 16) * 2,
       height = randInt(3, 10) * 2;
     const ans = base * height / 2;
-    return {
+    return {_genType: type,
       title: "面積②（三角形）",
       color: "#3b82f6",
       text: `下の三角形の面積を求めなさい。`,
@@ -1592,7 +1572,7 @@ function genProblem(diff = "mix") {
       height = randInt(3, 10),
       offset = randInt(2, 5);
     const ans = base * height;
-    return {
+    return {_genType: type,
       title: "面積③（平行四辺形）",
       color: "#22c55e",
       text: `下の平行四辺形の面積を求めなさい。`,
@@ -1615,7 +1595,7 @@ function genProblem(diff = "mix") {
       bottom = randInt(top / 2 + 2, top + 6) * 2,
       height = randInt(3, 9) * 2;
     const ans = (top + bottom) * height / 2;
-    return {
+    return {_genType: type,
       title: "面積④（台形）",
       color: "#f59e0b",
       text: `下の台形の面積を求めなさい。`,
@@ -1636,7 +1616,7 @@ function genProblem(diff = "mix") {
     // 円の面積
     const r = randInt(2, 8);
     const ans = r * r * 3.14;
-    return {
+    return {_genType: type,
       title: "面積⑤（円）",
       color: "#ec4899",
       text: `下の円の面積を求めなさい。\n（円周率は3.14を使うこと）`,
@@ -1660,7 +1640,7 @@ function genProblem(diff = "mix") {
     const c = 180 - a - b;
     const unknownKey = ["A", "B", "C"][randInt(0, 2)];
     const unknownVal = unknownKey === "A" ? a : unknownKey === "B" ? b : c;
-    return {
+    return {_genType: type,
       title: "角度（三角形）",
       color: "#f97316",
       text: `三角形の内角の合計は180°です。\n？の角度を求めなさい。`,
@@ -1692,7 +1672,7 @@ function genProblem(diff = "mix") {
     const unknownSide = Math.random() < 0.5 ? "EF" : "DE";
     const unknownVal = unknownSide === "EF" ? ef : de;
     const knownSides = unknownSide === "EF" ? `AB＝${ab}cm、BC＝${bc}cm、DE＝${de}cm` : `AB＝${ab}cm、BC＝${bc}cm、EF＝${ef}cm`;
-    return {
+    return {_genType: type,
       title: "相似な図形",
       color: "#8b5cf6",
       text: `△ABC ∽ △DEF です。\n${knownSides}\n${unknownSide}の長さを求めなさい。`,
@@ -1721,7 +1701,7 @@ function genProblem(diff = "mix") {
     const cd = ab * ratio;
     const unknownX = Math.random() < 0.5 ? "CD" : "OC";
     const unknownVal = unknownX === "CD" ? cd : oc;
-    return {
+    return {_genType: type,
       title: "相似（X字型）",
       color: "#2563eb",
       text: `右の図で、直線が点Oで交わっています。\n△OAB ∽ △OCDです。\nOA＝${oa}cm、OC＝${unknownX === "OC" ? "?" : oc + "cm"}\nAB＝${ab}cm、CD＝${unknownX === "CD" ? "?" : cd + "cm"}\n${unknownX}の長さを求めなさい。`,
@@ -1751,7 +1731,7 @@ function genProblem(diff = "mix") {
     const knownSum = knownAngles.reduce((a, b) => a + b, 0);
     const unknown = total - knownSum;
     if (unknown <= 0 || unknown >= 360) return genProblem();
-    return {
+    return {_genType: type,
       title: `角度（${n}角形）`,
       color: "#f97316",
       text: `${n}角形の内角の和は${total}°です。\n残りの1つの角度（？）を求めなさい。\nわかっている角度：\n${knownAngles.map((a, i) => `角${i + 1}＝${a}°`).join("、")}`,
@@ -1772,7 +1752,7 @@ function genProblem(diff = "mix") {
     const angleA = randInt(30, 150);
     const angleType = Math.random() < 0.5 ? "同位角" : "錯角";
     const unknown = angleA; // 同位角も錯角も等しい
-    return {
+    return {_genType: type,
       title: `平行線と${angleType}`,
       color: "#0ea5e9",
       text: `ℓ ∥ m（ℓとmは平行）のとき、\n${angleType}は等しいので\n？の角度を求めなさい。`,
@@ -1796,7 +1776,7 @@ function genProblem(diff = "mix") {
       w = randInt(2, 8),
       h = randInt(2, 8);
     const ans = l * w * h;
-    return {
+    return {_genType: type,
       title: "体積（直方体）",
       color: "#10b981",
       text: `下の直方体の体積を求めなさい。`,
@@ -1819,7 +1799,7 @@ function genProblem(diff = "mix") {
     const r = randInt(2, 7),
       h = randInt(3, 10);
     const ans = Math.round(r * r * 3.14 * h * 100) / 100;
-    return {
+    return {_genType: type,
       title: "体積（円柱）",
       color: "#06b6d4",
       text: `下の円柱の体積を求めなさい。\n（円周率は3.14を使うこと）`,
@@ -1840,7 +1820,7 @@ function genProblem(diff = "mix") {
   if (type === 12) {
     const r = randInt(2, 9);
     const ans = Math.round(2 * r * 3.14 * 100) / 100;
-    return {
+    return {_genType: type,
       title: "円周の長さ",
       color: "#ec4899",
       text: `下の円の円周の長さを求めなさい。\n（円周率は3.14を使うこと）`,
@@ -1864,7 +1844,7 @@ function genProblem(diff = "mix") {
     const area = Math.round(r * r * 3.14 * (deg / 360) * 100) / 100;
     const askArc = Math.random() < 0.5;
     const ans = askArc ? arcLen : area;
-    return {
+    return {_genType: type,
       title: `おうぎ形（${deg}°）`,
       color: "#a855f7",
       text: `半径${r}cm、中心角${deg}°のおうぎ形の\n${askArc ? "弧の長さ" : "面積"}を求めなさい。\n（円周率は3.14を使うこと）`,
@@ -1887,7 +1867,7 @@ function genProblem(diff = "mix") {
       w = randInt(2, 7),
       h = randInt(2, 7);
     const ans = 2 * (l * w + w * h + h * l);
-    return {
+    return {_genType: type,
       title: "表面積（直方体）",
       color: "#f59e0b",
       text: `下の直方体の表面積を求めなさい。`,
@@ -1915,7 +1895,7 @@ function genProblem(diff = "mix") {
   const w2 = isEnlarge ? w * scale : w / scale;
   const h2 = isEnlarge ? h * scale : h / scale;
   if (w2 <= 0 || h2 <= 0) return genProblem(diff);
-  return {
+  return {_genType: type,
     title: isEnlarge ? "拡大図" : "縮小図",
     color: "#6366f1",
     text: `元の図形を${isEnlarge ? scale + "倍に拡大" : "1/" + scale + "に縮小"}した図を作ります。\n元のよこ：${w}cm\n？（${isEnlarge ? "拡大" : "縮小"}後のよこ）を求めなさい。`,
@@ -1987,27 +1967,33 @@ function App() {
   const [streak, setStreak] = useState(0);
   const [best, setBest] = useState(0);
   const [confirmOpen, setConfirmOpen] = useState(false);
-  const [reviewMode, setReviewMode] = useState(false);
-  const [reviewBank, setReviewBank] = useState([]);
-  const [reviewMode, setReviewMode] = useState(false);
   const [reviewBank, setReviewBank] = useState([]);
   useEffect(() => {
     try {
       const s = localStorage.getItem(STORAGE_KEY);
       if (s) setBest(parseInt(s) || 0);
     } catch (_) {}
-    setReviewBank(reviewGetAll(SUBJECT_KEY));
+    setReviewBank(reviewGetAll(QUIZ_KEY));
   }, []);
   const saveBest = v => {
     try {
       localStorage.setItem(STORAGE_KEY, String(v));
     } catch (_) {}
   };
+  const startReview = () => {
+    const bank = reviewGetAll(QUIZ_KEY);
+    setReviewBank(bank);
+    if(bank.length === 0){ setMode("setup"); return; }
+    setProblems(reviewGetProblems(QUIZ_KEY, t => genProblem(t < 8 ? "easy" : "hard")));
+    setCurrent(0); setScore(0); setStreak(0);
+    setScratch(""); setAnswerVals({}); setFocused("scratch");
+    setChecked(false); setCorrect({}); setHintIdx(-1); setCeleb(false); setConfirmOpen(false);
+    setMode("review");
+  };
   const startQuiz = () => {
-    const _bank=reviewGetAll(SUBJECT_KEY);setReviewBank(_bank);
-    setProblems(reviewMode&&_bank.length>0
-      ?reviewGetProblems(SUBJECT_KEY,t=>genProblem(t<8?'easy':'hard')).slice(0,totalQ)
-      :Array.from({length:totalQ},()=>genProblem(diff)));
+    setProblems(Array.from({
+      length: totalQ
+    }, () => genProblem(diff)));
     setCurrent(0);
     setScore(0);
     setStreak(0);
@@ -2083,16 +2069,18 @@ function App() {
       }
       setCeleb(true);
       setTimeout(() => setCeleb(false), 2000);
-      reviewMarkCorrect(SUBJECT_KEY, problem);
-      setReviewBank(reviewGetAll(SUBJECT_KEY));
+      reviewMarkCorrect(QUIZ_KEY, problem);
+      setReviewBank(reviewGetAll(QUIZ_KEY));
     } else {
       setStreak(0);
-      reviewSave(SUBJECT_KEY, problem);
-      setReviewBank(reviewGetAll(SUBJECT_KEY));
+      reviewSave(QUIZ_KEY, problem);
+      setReviewBank(reviewGetAll(QUIZ_KEY));
     }
   };
   const nextQuestion = () => {
-    if (current + 1 >= problems.length) {
+    const _end = current + 1 >= problems.length;
+    if(_end && mode==="review"){const b=reviewGetAll(QUIZ_KEY);setReviewBank(b);if(b.length>0){startReview();}else{setMode("graduated");}return;}
+    if (_end) {
       setMode("result");
       return;
     }
@@ -2124,29 +2112,17 @@ function App() {
     }
   }, "\u56F3\u5F62\u554F\u984C \u7DF4\u7FD2"), /*#__PURE__*/React.createElement("p", {
     className: "setup-sub"
-  }, "\u9762\u7A4D\u30FB\u4F53\u7A4D\u30FB\u89D2\u5EA6\u30FB\u76F8\u4F3C\uFF08\u5C0F\u5B66\u6821\u9AD8\u5B66\u5E74\uFF09"), /*#__PURE__*/React.createElement("div", {style:{marginBottom:"16px"}},
-    React.createElement("button", {
-      onClick: ()=>reviewBank.length>0&&setReviewMode(r=>!r),
-      style:{width:"100%",padding:"12px 16px",borderRadius:"14px",cursor:reviewBank.length>0?"pointer":"default",border:reviewMode?"2px solid #ef4444":"2px solid #e5e7eb",background:reviewMode?"#fef2f2":"#f9fafb",display:"flex",alignItems:"center",justifyContent:"space-between",fontFamily:"inherit",opacity:reviewBank.length===0?0.45:1}},
-      React.createElement("span",{style:{fontWeight:"900",fontSize:"14px",color:reviewMode?"#b91c1c":"#374151"}},"📚 復習モード"),
-      React.createElement("span",{style:{background:reviewBank.length>0?(reviewMode?"#ef4444":"#6b7280"):"#d1d5db",color:"#fff",borderRadius:"99px",padding:"2px 10px",fontSize:"12px",fontWeight:"bold"}},reviewBank.length>0?`${reviewBank.length}問`:"なし")
-    ),
-    reviewBank.length===0&&React.createElement("div",{style:{fontSize:"11px",color:"#9ca3af",textAlign:"center",marginTop:"4px"}},"間違えた問題が溜まるとここで復習できます"),
-    reviewMode&&reviewBank.length>0&&React.createElement("div",{style:{fontSize:"11px",color:"#ef4444",textAlign:"center",marginTop:"4px",fontWeight:"bold"}},"✅ 5回正解で復習リストから卒業！")
-  ),
-  /*#__PURE__*/React.createElement("div",{style:{marginBottom:"16px"}},
-    React.createElement("button",{
-      onClick:()=>{if(reviewBank.length>0){setReviewMode(true);startReview();}},
-      style:{width:"100%",padding:"14px 16px",borderRadius:"14px",cursor:reviewBank.length>0?"pointer":"default",border:reviewBank.length>0?"2px solid #ef4444":"2px solid #e5e7eb",background:reviewBank.length>0?"#fef2f2":"#f9fafb",display:"flex",alignItems:"center",justifyContent:"space-between",fontFamily:"inherit",opacity:reviewBank.length===0?0.45:1}},
-      React.createElement("div",{style:{textAlign:"left"}},
-        React.createElement("div",{style:{fontWeight:"900",fontSize:"15px",color:reviewBank.length>0?"#b91c1c":"#374151"}},"📚 復習モード"),
-        reviewBank.length>0&&React.createElement("div",{style:{fontSize:"11px",color:"#ef4444",marginTop:"2px"}},"タップして今すぐ開始！")
+  }, "\u9762\u7A4D\u30FB\u4F53\u7A4D\u30FB\u89D2\u5EA6\u30FB\u76F8\u4F3C\uFF08\u5C0F\u5B66\u6821\u9AD8\u5B66\u5E74\uFF09"), React.createElement("div", {style:{marginBottom:"16px"}},
+      React.createElement("button",{onClick:()=>{if(reviewBank.length>0)startReview();},style:{width:"100%",padding:"14px 16px",borderRadius:"14px",cursor:reviewBank.length>0?"pointer":"default",border:reviewBank.length>0?"2px solid #ef4444":"2px solid #e5e7eb",background:reviewBank.length>0?"#fef2f2":"#f9fafb",display:"flex",alignItems:"center",justifyContent:"space-between",fontFamily:"inherit",opacity:reviewBank.length===0?0.45:1}},
+        React.createElement("div",{style:{textAlign:"left"}},
+          React.createElement("div",{style:{fontWeight:"900",fontSize:"15px",color:reviewBank.length>0?"#b91c1c":"#374151"}},"📚 復習モード"),
+          reviewBank.length>0&&React.createElement("div",{style:{fontSize:"11px",color:"#ef4444",marginTop:"2px"}},"タップして今すぐ開始！")
+        ),
+        React.createElement("span",{style:{background:reviewBank.length>0?"#ef4444":"#d1d5db",color:"#fff",borderRadius:"99px",padding:"4px 12px",fontSize:"13px",fontWeight:"bold"}},reviewBank.length>0?`${reviewBank.length}問`:"なし")
       ),
-      React.createElement("span",{style:{background:reviewBank.length>0?"#ef4444":"#d1d5db",color:"#fff",borderRadius:"99px",padding:"4px 12px",fontSize:"13px",fontWeight:"bold"}},reviewBank.length>0?`${reviewBank.length}問`:"なし")
+      reviewBank.length===0&&React.createElement("div",{style:{fontSize:"11px",color:"#9ca3af",textAlign:"center",marginTop:"4px"}},"間違えた問題が溜まるとここで復習できます")
     ),
-    reviewBank.length===0&&React.createElement("div",{style:{fontSize:"11px",color:"#9ca3af",textAlign:"center",marginTop:"4px"}},"間違えた問題が溜まるとここで復習できます")
-  ),
-  best > 0 && /*#__PURE__*/React.createElement("div", {
+    best > 0 && /*#__PURE__*/React.createElement("div", {
     className: "best-badge",
     style: {
       background: "#f3e8ff",
@@ -2249,17 +2225,15 @@ function App() {
   }, "\u30B9\u30BF\u30FC\u30C8\uFF01 \uD83D\uDE80")));
 
   // ── 結果 ──────────────────────────────────────────────────
-  if(mode==="graduated") return React.createElement("div",{className:"setup-wrap",style:{background:"#f0fdf4"}},
-    React.createElement("div",{className:"setup-card"},
-      React.createElement("div",{className:"setup-emoji"},"🎓"),
-      React.createElement("h2",{className:"setup-title",style:{color:"#166534"}},"復習バンク卒業！"),
-      React.createElement("p",{style:{fontSize:"14px",color:"#16a34a",marginBottom:"16px",fontWeight:"bold"}},"すべての問題を5回正解しました！"),
-      React.createElement("div",{style:{background:"#dcfce7",borderRadius:"14px",padding:"16px",marginBottom:"16px",fontSize:"13px",color:"#166534",lineHeight:"1.8"}},
-        "🌟 間違えた問題をすべてマスターしました！通常モードで新しい問題に挑戦しましょう。"),
-      React.createElement("button",{className:"start-btn",style:{background:"linear-gradient(135deg,#4ade80,#22c55e)",color:"#fff",boxShadow:"0 4px 0 #16a34a"},onClick:()=>{setReviewMode(false);setMode("setup");}},"もどる")
+  if(mode === "graduated") return React.createElement("div", {className:"setup-wrap",style:{background:"#f0fdf4"}},
+    React.createElement("div", {className:"setup-card"},
+      React.createElement("div", {className:"setup-emoji"}, "🎓"),
+      React.createElement("h2", {className:"setup-title",style:{color:"#166534"}}, "復習バンク卒業！"),
+      React.createElement("p", {style:{fontSize:"14px",color:"#16a34a",marginBottom:"16px",fontWeight:"bold"}}, "すべての問題を5回正解しました！"),
+      React.createElement("div", {style:{background:"#dcfce7",borderRadius:"14px",padding:"16px",marginBottom:"16px",fontSize:"13px",color:"#166534",lineHeight:"1.8"}}, "🌟 間違えた問題をすべてマスターしました！"),
+      React.createElement("button", {className:"start-btn",style:{background:"linear-gradient(135deg,#4ade80,#22c55e)",color:"#fff",boxShadow:"0 4px 0 #16a34a"},onClick:()=>setMode("setup")}, "もどる")
     )
   );
-
   if (mode === "result") {
     const pct = Math.round(score / Math.max(problems.length, 1) * 100);
     return /*#__PURE__*/React.createElement("div", {
@@ -2338,7 +2312,12 @@ function App() {
         boxShadow: "0 4px 0 #374151"
       },
       onClick: () => setMode("setup")
-    }, "\u8A2D\u5B9A\u3078"), reviewBank.length>0&&/*#__PURE__*/React.createElement("button",{className:"start-btn",style:{background:"linear-gradient(135deg,#ef4444,#dc2626)",color:"#fff",boxShadow:"0 4px 0 #991b1b",marginTop:"8px",width:"100%"},onClick:()=>{setReviewMode(true);startReview();}},"\u7d9a\u3051\u3066\u5fa9\u7fd2\u3059\u308b \uD83D\uDCDA ("+reviewBank.length+"\u554f)"))));
+    }, "\u8A2D\u5B9A\u3078"),
+      reviewBank.length > 0 && React.createElement("button", {
+        className: "start-btn",
+        style:{background:"linear-gradient(135deg,#ef4444,#dc2626)",color:"#fff",boxShadow:"0 4px 0 #991b1b",marginTop:"8px",width:"100%"},
+        onClick: startReview
+      }, `続けて復習する 📚 (${reviewBank.length}問)`))));
   }
   if (!problem) return null;
   const progress = current / Math.max(problems.length, 1) * 100;
@@ -2668,7 +2647,7 @@ function App() {
       boxShadow: "0 4px 0 #15803d"
     },
     onClick: nextQuestion
-  }, current + 1 >= problems.length ? mode==="review"?(reviewGetAll(SUBJECT_KEY).length>0?"続きへ 🔁":"卒業！ 🎓"):"結果を見る 🎉" : "つぎへ →"), !allCorrect && /*#__PURE__*/React.createElement("button", {
+  }, current + 1 >= totalQ ? mode==="review"?(reviewGetAll(QUIZ_KEY).length>0?"続きへ 🔁":"卒業！ 🎓"):"結果を見る 🎉" : "つぎへ →"), !allCorrect && /*#__PURE__*/React.createElement("button", {
     className: "retry-btn",
     onClick: () => {
       setChecked(false);
@@ -2677,6 +2656,7 @@ function App() {
   }, "\u3084\u308A\u306A\u304A\u3059"))));
 }
 ReactDOM.createRoot(document.getElementById("root")).render(/*#__PURE__*/React.createElement(App, null));
+
 </script>
 </body>
 </html>
