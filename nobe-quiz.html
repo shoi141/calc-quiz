@@ -33,7 +33,7 @@ const STORAGE_KEY = "nobe_best";
 
 function genProblemOfType(t){return genProblem(t);}
 function genProblem(forceType) {
-  const type = forceType !== undefined ? forceType : Math.floor(Math.random() * 4);
+  const type = forceType !== undefined ? forceType : Math.floor(Math.random() * 15);
   if (type === 0) {
     const n=randInt(4,10), avg=randInt(10,80);
     return {_genType:type,
@@ -64,17 +64,272 @@ function genProblem(forceType) {
       hints:[`${n}人合計＝${avg}×${n}＝${n*avg}点`,`${n+1}人合計＝${newAvg}×${n+1}＝${newAvg*(n+1)}点`,`追加した人＝${newAvg*(n+1)}−${n*avg}＝${extra}点 ✅`],
     };
   }
-  const people=randInt(2,6), days=randInt(3,8), newPeople=randInt(2,8);
-  const total=days*people;
-  if (total % newPeople !== 0) return genProblem();
+  if (type === 3) {
+    // のべ算：何日かかる
+    const people=randInt(2,6), days=randInt(3,8), newPeople=randInt(2,8);
+    const total=days*people;
+    if (total % newPeople !== 0) return genProblem();
+    return {_genType:type,
+      title:"のべ算①（日数を求める）", color:"#5b21b6",
+      text:`${people}人で **${days}日** かかる仕事があります。\n${newPeople}人でやると何日かかりますか？`,
+      answers:[{label:"日数",value:total/newPeople,unit:"日"}],
+      hints:["🔑 全仕事量＝人数×日数",`${people}×${days}＝${total}人日`,`${newPeople}人なら${total}÷${newPeople}＝${total/newPeople}日 ✅`],
+    };
+  }
+  if (type === 4) {
+    // のべ算：何人増やすか（写真[1](1)タイプ）
+    const people=randInt(3,8), days=randInt(8,20), newDays=randInt(3,7);
+    if(newDays >= days) return genProblem();
+    const total=people*days;
+    if(total % newDays !== 0) return genProblem();
+    const needed=total/newDays;
+    const add=needed-people;
+    if(add <= 0) return genProblem();
+    return {_genType:type,
+      title:"のべ算②（人数を増やす）", color:"#4c1d95",
+      text:`**${people}人** ですると **${days}日間** かかる仕事があります。\nこの仕事を **${newDays}日間** でするには、あと何人増やせばよいですか？`,
+      answers:[{label:"増やす人数",value:add,unit:"人"}],
+      hints:[
+        `🔑 全仕事量＝人数×日数＝${people}×${days}＝${total}人日`,
+        `${newDays}日で終えるには${total}÷${newDays}＝${needed}人必要`,
+        `増やす人数＝${needed}−${people}＝${add}人 ✅`,
+      ],
+    };
+  }
+  if (type === 5) {
+    // のべ算：何人必要か
+    const people=randInt(3,8), days=randInt(6,15), newDays=randInt(2,5);
+    if(newDays >= days) return genProblem();
+    const total=people*days;
+    if(total % newDays !== 0) return genProblem();
+    const needed=total/newDays;
+    return {_genType:type,
+      title:"のべ算③（必要人数）", color:"#3730a3",
+      text:`**${people}人** でやると **${days}日** かかる仕事があります。\n**${newDays}日** で終わらせるには何人必要ですか？`,
+      answers:[{label:"必要人数",value:needed,unit:"人"}],
+      hints:[
+        `🔑 全仕事量＝${people}×${days}＝${total}人日`,
+        `${newDays}日で終えるには${total}÷${newDays}＝${needed}人 ✅`,
+      ],
+    };
+  }
+  if (type === 6) {
+    // ページのべ算（写真[2]タイプ）
+    const perDay=randInt(3,8)*2, origDays=randInt(8,15), newDays=randInt(4,7);
+    if(newDays >= origDays) return genProblem();
+    const total=perDay*origDays;
+    if(total % newDays !== 0) return genProblem();
+    const newPerDay=total/newDays;
+    const items=[
+      {thing:"ページ",unit:"ページ",per:"ページずつ"},
+      {thing:"問題",unit:"問",per:"問ずつ"},
+    ];
+    const it=items[randInt(0,1)];
+    return {_genType:type,
+      title:"のべ算④（ページ・問題）", color:"#1e40af",
+      text:`1日に **${perDay}${it.per}** 読むと **${origDays}日間** で読み終わる本があります。\n**${newDays}日間** で読み終えるには、1日に何${it.unit}ずつ読めばよいですか？`,
+      answers:[{label:`1日あたり`,value:newPerDay,unit:it.unit}],
+      hints:[
+        `🔑 全${it.thing}数＝1日あたり×日数＝${perDay}×${origDays}＝${total}${it.unit}`,
+        `${newDays}日で読むには${total}÷${newDays}＝${newPerDay}${it.unit}/日 ✅`,
+      ],
+    };
+  }
+  if (type === 11) { const r=genNobeComplex1(); return r||genProblem(); }
+  if (type === 12) { const r=genNobeComplex2(); return r||genProblem(); }
+  if (type === 13) { const r=genNobeTime(); return r||genProblem(); }
+  if (type === 14) { const r=genWeightedAvgMale(); return r||genProblem(); }
+  if (type === 8) { const r=genAvgReverse1(); return r||genProblem(); }
+  if (type === 9) { const r=genAvgReverse2(); return r||genProblem(); }
+  if (type === 10) { const r=genWeightedAvg(); return r||genProblem(); }
+  // type === 7: 座席のべ算（写真[3]タイプ）
+  const people=randInt(3,6), seats=randInt(2,people-1);
+  const totalMinsList=[100,110,120,130,140,150,160,170,180];
+  const totalMins=totalMinsList[randInt(0,totalMinsList.length-1)];
+  const totalNobe=totalMins*seats;
+  if(totalNobe % people !== 0) return genProblem();
+  const perPerson=totalNobe/people;
+  const h=Math.floor(perPerson/60), m=perPerson%60;
+  const timeStr = h>0 && m>0 ? `${h}時間${m}分` : h>0 ? `${h}時間` : `${m}分`;
+  const totalTimeStr = `${Math.floor(totalMins/60)}時間${totalMins%60>0?totalMins%60+'分':''}`;
   return {_genType:type,
-    title:"のべ算", color:"#5b21b6",
-    text:`${people}人で **${days}日** かかる仕事があります。\n${newPeople}人でやると何日かかりますか？`,
-    answers:[{label:"日数",value:total/newPeople,unit:"日"}],
-    hints:["🔑 全仕事量＝人数×日数",`${people}×${days}＝${total}人日`,`${newPeople}人なら${total}÷${newPeople}＝${total/newPeople}日 ✅`],
+    title:"のべ算⑤（座席・交代）", color:"#1d4ed8",
+    text:`**${people}人** で **${totalTimeStr}** 電車に乗ります。\n席が **${seats}つ** しか空いていないので、同じ時間ずつ交代で座ることにしました。\n1人何分座ることができますか？`,
+    answers:[{label:"座る時間",value:perPerson,unit:"分"}],
+    hints:[
+      `🔑 全体の「座れる時間の合計」＝席数×乗車時間`,
+      `${seats}席×${totalMins}分＝${totalNobe}人分の分`,
+      `${people}人で分けると${totalNobe}÷${people}＝${perPerson}分 ✅`,
+    ],
   };
 }
 
+
+// type 11: 複合のべ算①（前半・後半で人数が違う仕事→全部で何日？）
+function genNobeComplex1() {
+  // 前半: a人でd1日、後半: b人でd2日 → 同じ仕事を最初からc人でやると何日？
+  const a=randInt(3,6), d1=randInt(2,5), b=randInt(5,12), d2=randInt(2,4);
+  const total = a*d1 + b*d2;
+  const c = randInt(2,8);
+  if(total % c !== 0) return null;
+  const ans = total / c;
+  if(ans <= 0 || ans > 30) return null;
+  return {_genType:11,
+    title:"のべ算⑥（複合・何日）", color:"#065f46",
+    text:`ある仕事を、はじめの **${d1}日間** は **${a}人** で、次の **${d2}日間** は **${b}人** で終わらせました。\nこの仕事をはじめから **${c}人** ですると、何日で終わりますか？`,
+    answers:[{label:"日数",value:ans,unit:"日"}],
+    hints:[
+      `🔑 全仕事量＝前半＋後半`,
+      `前半：${a}人×${d1}日＝${a*d1}人日`,
+      `後半：${b}人×${d2}日＝${b*d2}人日`,
+      `全仕事量＝${a*d1}＋${b*d2}＝${total}人日`,
+      `${c}人でやると${total}÷${c}＝${ans}日 ✅`,
+    ],
+  };
+}
+// type 12: 複合のべ算②（全体の日数が決まっていて残りの人数を求める）
+function genNobeComplex2() {
+  // a人でd_total日かかる仕事。d1日間をb人でやった。残りをc人でやると残り何日？→残り何人？
+  const a=randInt(4,8), d_total=randInt(10,20);
+  const total = a * d_total;
+  const b=randInt(6,12), d1=randInt(2,4);
+  const done = b * d1;
+  if(done >= total) return null;
+  const remaining = total - done;
+  // 残り日数 = d_total - d1 (問2パターン)
+  const d_remain = d_total - d1;
+  if(d_remain <= 0 || remaining % d_remain !== 0) return null;
+  const c = remaining / d_remain;
+  if(c <= 0 || c > 30) return null;
+  return {_genType:12,
+    title:"のべ算⑦（複合・残り人数）", color:"#064e3b",
+    text:`**${a}人** ですると **${d_total}日間** かかる仕事があります。\nこの仕事を **${d_total}日間** で終わらせようと思います。\nはじめの **${d1}日間** を **${b}人** ですると、残りは何人ですればよいですか？`,
+    answers:[{label:"残りの人数",value:c,unit:"人"}],
+    hints:[
+      `全仕事量＝${a}×${d_total}＝${total}人日`,
+      `はじめの${d1}日で${b}×${d1}＝${done}人日終わった`,
+      `残り仕事＝${total}−${done}＝${remaining}人日`,
+      `残り日数＝${d_total}−${d1}＝${d_remain}日`,
+      `必要人数＝${remaining}÷${d_remain}＝${c}人 ✅`,
+    ],
+  };
+}
+// type 13: 時間付きのべ算（人数×時間×日数）
+function genNobeTime() {
+  // a人×h1時間×d1日 の仕事を b人×h2時間でやると何日？
+  const a=randInt(3,8), h1=randInt(4,8), d1=randInt(6,15);
+  const b=randInt(3,6), h2=randInt(4,8);
+  const total = a * h1 * d1;
+  if(total % (b*h2) !== 0) return null;
+  const ans = total / (b*h2);
+  if(ans <= 0 || ans > 30) return null;
+  return {_genType:13,
+    title:"のべ算⑧（時間付き）", color:"#134e4a",
+    text:`**${a}人** の大工さんが毎日 **${h1}時間** ずつ働くと **${d1}日間** で仕上がる仕事があります。\nこの仕事を **${b}人** で毎日 **${h2}時間** ずつ働くと、何日間で仕上がりますか？`,
+    answers:[{label:"日数",value:ans,unit:"日"}],
+    hints:[
+      `🔑 全仕事量＝人数×時間×日数`,
+      `全仕事量＝${a}人×${h1}時間×${d1}日＝${total}人時間`,
+      `${b}人×${h2}時間＝${b*h2}人時間/日`,
+      `${total}÷${b*h2}＝${ans}日 ✅`,
+    ],
+  };
+}
+// type 14: 加重平均（男子人数を求める）
+function genWeightedAvgMale() {
+  const avgB = randInt(65, 85);
+  const avgG = randInt(avgB+3, 95);
+  const ng = randInt(8, 30);
+  const avgAll = randInt(avgB+1, avgG-1);
+  const nb_num = ng * (avgG - avgAll);
+  const nb_den = avgAll - avgB;
+  if(nb_den === 0 || nb_num % nb_den !== 0) return null;
+  const nb = nb_num / nb_den;
+  if(nb <= 0 || nb > 50) return null;
+  return {_genType:14,
+    title:"平均算⑦（加重平均・男子人数）", color:"#7c2d12",
+    text:`男子の平均点は **${avgB}点**、女子 **${ng}人** の平均点は **${avgG}点** で、\n全体の平均点は **${avgAll}点** でした。男子は何人ですか？`,
+    answers:[{label:"男子の人数",value:nb,unit:"人"}],
+    hints:[
+      "🔑 男子の不足分＝女子の超過分",
+      `女子の超過＝(${avgG}−${avgAll})×${ng}＝${(avgG-avgAll)*ng}`,
+      `男子の不足＝(${avgAll}−${avgB})×□＝${(avgG-avgAll)*ng}`,
+      `男子の人数＝${(avgG-avgAll)*ng}÷${avgAll-avgB}＝${nb}人 ✅`,
+    ],
+  };
+}
+
+// type 8: 逆算型平均①
+function genAvgReverse1() {
+  const newScore = 100;
+  const origAvg = randInt(65, 90);
+  const newAvg = origAvg + randInt(1, 4);
+  if(newAvg >= newScore) return null;
+  const denom = origAvg - newAvg;
+  const numer = newAvg - newScore;
+  if(denom === 0 || numer % denom !== 0) return null;
+  const n = numer / denom;
+  if(n <= 0 || n > 20) return null;
+  const subjects = ["算数","国語","理科","社会","英語"];
+  const subj = subjects[randInt(0, subjects.length-1)];
+  return {_genType:8,
+    title:"平均算④（逆算・回数）", color:"#b45309",
+    text:`今までに${subj}のテストが何回かあり、その平均点は **${origAvg}点** でした。\n次のテストで **${newScore}点** をとると、全体の平均点が **${newAvg}点** になります。\n今までに何回ありましたか？`,
+    answers:[{label:"今までの回数",value:n,unit:"回"}],
+    hints:[
+      "🔑 面積図：アの面積＝イの面積",
+      `ア＝(${newScore}−${newAvg})×1＝${newScore-newAvg}`,
+      `イの縦＝${newAvg}−${origAvg}＝${newAvg-origAvg}`,
+      `今までの回数＝${newScore-newAvg}÷${newAvg-origAvg}＝${n}回 ✅`,
+    ],
+  };
+}
+// type 9: 逆算型平均②（何回目）
+function genAvgReverse2() {
+  const origAvg = randInt(70, 90);
+  const newAvg = origAvg + randInt(1, 3);
+  const newScore = origAvg + randInt(8, 20);
+  if(newScore > 100) return null;
+  const n = (newScore - newAvg) / (newAvg - origAvg);
+  if(!Number.isInteger(n) || n <= 0 || n > 20) return null;
+  const totalN = n + 1;
+  const subjects = ["漢字","算数","国語","理科"];
+  const subj = subjects[randInt(0, subjects.length-1)];
+  return {_genType:9,
+    title:"平均算⑤（逆算・何回目）", color:"#92400e",
+    text:`${subj}テストのこれまでの平均点は **${origAvg}点** でしたが、\n今回 **${newScore}点** をとったので平均点が **${newAvg}点** になりました。\n今回は何回目ですか？`,
+    answers:[{label:"今回は何回目",value:totalN,unit:"回目"}],
+    hints:[
+      `ア＝(${newScore}−${newAvg})×1＝${newScore-newAvg}`,
+      `イの縦＝${newAvg}−${origAvg}＝${newAvg-origAvg}`,
+      `これまでの回数＝${newScore-newAvg}÷${newAvg-origAvg}＝${n}回`,
+      `今回は${n}＋1＝${totalN}回目 ✅`,
+    ],
+  };
+}
+// type 10: 加重平均（男子N人・女子平均・全体平均→女子何人）
+function genWeightedAvg() {
+  const avgB = randInt(65, 80);
+  const avgG = randInt(avgB+4, 95);
+  const nb = randInt(8, 20);
+  const avgAll = randInt(avgB+1, avgG-1);
+  const ng_num = nb * (avgAll - avgB);
+  const ng_den = avgG - avgAll;
+  if(ng_den === 0 || ng_num % ng_den !== 0) return null;
+  const ng = ng_num / ng_den;
+  if(ng <= 0 || ng > 30) return null;
+  return {_genType:10,
+    title:"平均算⑥（加重平均）", color:"#7c2d12",
+    text:`男子 **${nb}人** の平均点は **${avgB}点**、女子の平均点は **${avgG}点** で、\nクラスの平均点は **${avgAll}点** でした。女子は何人ですか？`,
+    answers:[{label:"女子の人数",value:ng,unit:"人"}],
+    hints:[
+      "🔑 男子の不足分＝女子の超過分",
+      `男子の不足＝(${avgAll}−${avgB})×${nb}＝${(avgAll-avgB)*nb}`,
+      `女子の超過＝(${avgG}−${avgAll})×□＝${(avgAll-avgB)*nb}`,
+      `女子の人数＝${(avgAll-avgB)*nb}÷${avgG-avgAll}＝${ng}人 ✅`,
+    ],
+  };
+}
 
 // ─── 途中式表示 ────────────────────────────────────────────
 function ScratchDisplay({ scratch, focused }) {
