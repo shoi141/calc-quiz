@@ -211,6 +211,11 @@ function App() {
   if(mode==="setup") return(
     <div className="setup-wrap" style={{background:"#faf5ff"}}>
       <div className="setup-card">
+                <div style={{textAlign:"center",marginBottom:"12px",fontSize:"12px"}}>
+          <a href="https://shoi141.github.io/calc-quiz/" style={{color:"#adb5bd",textDecoration:"none"}}>← 算数トップ</a>
+          {"　|　"}
+          <a href="https://shoi141.github.io/quiz-portal/" style={{color:"#adb5bd",textDecoration:"none"}}>🏠 教科トップ</a>
+        </div>
         <div className="setup-emoji">📝</div>
         <h1 className="setup-title">{"推理と試行 練習"}</h1>
         <p className="setup-sub">小学校高学年レベル</p>
@@ -247,11 +252,6 @@ function App() {
           ))}
         </div>
         <button className="start-btn" style={{background:BTN,color:TXT,boxShadow:`0 4px 0 ${SHD}`}} onClick={startQuiz}>スタート！ 🚀</button>
-        <div style={{textAlign:"center",marginTop:"16px",fontSize:"12px"}}>
-          <a href="https://shoi141.github.io/calc-quiz/" style={{color:"#adb5bd",textDecoration:"none"}}>← 算数トップ</a>
-          {"　|　"}
-          <a href="https://shoi141.github.io/quiz-portal/" style={{color:"#adb5bd",textDecoration:"none"}}>🏠 教科トップ</a>
-        </div>
       </div>
     </div>
   );
