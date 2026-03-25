@@ -242,6 +242,11 @@ function App() {
           ))}
         </div>
         <button className="start-btn" style={{background:BTN,color:TXT,boxShadow:`0 4px 0 ${SHD}`}} onClick={startQuiz}>スタート！ 🚀</button>
+        <div style={{textAlign:"center",marginTop:"16px",fontSize:"12px"}}>
+          <a href="https://shoi141.github.io/calc-quiz/" style={{color:"#adb5bd",textDecoration:"none"}}>← 算数トップ</a>
+          {"　|　"}
+          <a href="https://shoi141.github.io/quiz-portal/" style={{color:"#adb5bd",textDecoration:"none"}}>🏠 教科トップ</a>
+        </div>
       </div>
     </div>
   );
@@ -323,6 +328,7 @@ function App() {
       )}
 
       <div className="quiz-header">
+        <button className="back-btn" onClick={()=>setMode("setup")}>← 設定へ</button>
         <div className="header-left">
           <span className="q-label">Q{current+1}<span className="q-total">/{totalQ}</span></span>
           <span className="type-tag" style={{background:problem.color}}>{problem.title}</span>
